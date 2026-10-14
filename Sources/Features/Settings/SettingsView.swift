@@ -31,7 +31,7 @@ struct SettingsView: View {
                 }
                 Section("Diagnostics") {
                     NavigationLink("Playback debug") { PlaybackDebugView(player: self.environment.player) }
-                    NavigationLink("API debug") { APIDebugView(client: self.environment.client) }
+                    NavigationLink("API debug") { APIDebugView(client: self.environment.client, player: self.environment.player) }
                 }
             }
             .navigationTitle("Settings")

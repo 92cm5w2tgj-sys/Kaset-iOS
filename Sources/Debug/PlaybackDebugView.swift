@@ -9,6 +9,20 @@ struct PlaybackDebugView: View {
     @State private var playlistId = ""
     @State private var nextVideoId = ""
 
+    private struct Preset {
+        let title: String
+        let videoId: String
+        let radio: Bool
+    }
+
+    /// Well-known tracks so the transport can be exercised without looking up ids.
+    private static let presets = [
+        Preset(title: "Radio : Rick Astley – Never Gonna Give You Up", videoId: "dQw4w9WgXcQ", radio: true),
+        Preset(title: "Radio : Queen – Bohemian Rhapsody", videoId: "fJ9rUzIMcZQ", radio: true),
+        Preset(title: "Radio : Ed Sheeran – Shape of You", videoId: "JGwWNGJdvx8", radio: true),
+        Preset(title: "Piste seule : Luis Fonsi – Despacito", videoId: "kJQP7kiw5Fk", radio: false),
+    ]
+
     var body: some View {
         NavigationStack {
             List {
@@ -34,6 +48,21 @@ struct PlaybackDebugView: View {
                     .buttonStyle(.borderless)
                     Button("Rafraîchir l'état") { self.player.refreshState() }
                     Toggle("Now Playing natif", isOn: self.$nativeNowPlaying)
+                }
+
+                Section("Pistes de test") {
+                    ForEach(Self.presets, id: \.videoId) { preset in
+                        Button(preset.title) {
+                            self.player.play(videoId: preset.videoId, playlistId: preset.radio ? "RDAMVM\(preset.videoId)" : nil)
+                        }
+                    }
+                    if let current = self.player.state.videoId {
+                        Button("Ajouter « \(self.player.state.title ?? current) » comme prochaine (test file)") {
+                            if let other = Self.presets.first(where: { $0.videoId != current }) {
+                                self.player.playNext(videoId: other.videoId)
+                            }
+                        }
+                    }
                 }
 
                 Section("Lancer") {

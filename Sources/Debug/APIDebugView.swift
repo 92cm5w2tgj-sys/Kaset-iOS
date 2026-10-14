@@ -4,6 +4,7 @@ import SwiftUI
 /// Removed once the real Home/Search screens land (K6).
 struct APIDebugView: View {
     let client: YTMusicClient
+    let player: WebPlayer
 
     @State private var sections: [HomeSection] = []
     @State private var results: [SearchResultItem] = []
@@ -25,19 +26,35 @@ struct APIDebugView: View {
                 if !self.results.isEmpty {
                     Section("Résultats (\(self.results.count))") {
                         ForEach(self.results) { item in
-                            VStack(alignment: .leading) {
-                                Text(item.title)
-                                if let subtitle = item.subtitle {
-                                    Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                            Button {
+                                switch item {
+                                case let .song(song), let .video(song):
+                                    self.player.play(videoId: song.videoId, playlistId: "RDAMVM\(song.videoId)")
+                                default: break
+                                }
+                            } label: {
+                                VStack(alignment: .leading) {
+                                    Text(item.title)
+                                    if let subtitle = item.subtitle {
+                                        Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                                    }
                                 }
                             }
+                            .buttonStyle(.plain)
                         }
                     }
                 }
 
                 ForEach(self.sections) { section in
                     Section("\(section.title) (\(section.items.count))") {
-                        ForEach(section.items) { Text($0.title) }
+                        ForEach(section.items) { item in
+                            Button(item.title) {
+                                if case let .song(song) = item {
+                                    self.player.play(videoId: song.videoId, playlistId: "RDAMVM\(song.videoId)")
+                                }
+                            }
+                            .buttonStyle(.plain)
+                        }
                     }
                 }
             }
