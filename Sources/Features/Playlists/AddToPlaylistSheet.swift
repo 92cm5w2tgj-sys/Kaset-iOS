@@ -1,6 +1,19 @@
 import Observation
 import SwiftUI
 
+/// What is being added: one song, or the songs of a playlist/album cover.
+enum AddToPlaylistSource: Equatable {
+    case song(videoId: String, title: String?)
+    case collection(id: String, title: String)
+
+    var displayTitle: String? {
+        switch self {
+        case let .song(_, title): title
+        case let .collection(_, title): title
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class AddToPlaylistModel {
@@ -8,27 +21,48 @@ final class AddToPlaylistModel {
         case loading, loaded, failed(String)
     }
 
-    let videoId: String
+    let source: AddToPlaylistSource
     private let client: YTMusicClient
 
     private(set) var menu: AddToPlaylistMenu?
+    private(set) var options: [AddToPlaylistOption] = []
     private(set) var phase: Phase = .loading
-    /// Playlists that now contain the song (already did, or added in this sheet).
+    /// Playlists that now contain the song(s) (already did, or added in this sheet).
     private(set) var added: Set<String> = []
     private(set) var busyId: String?
+    private var videoIds: [String] = []
     var message: String?
 
-    init(videoId: String, client: YTMusicClient) {
-        self.videoId = videoId
+    init(source: AddToPlaylistSource, client: YTMusicClient) {
+        self.source = source
         self.client = client
     }
 
+    /// Songs to add. A cover is resolved to its tracks first.
+    private func resolveVideoIds() async throws -> [String] {
+        if !self.videoIds.isEmpty { return self.videoIds }
+        switch self.source {
+        case let .song(videoId, _):
+            self.videoIds = [videoId]
+        case let .collection(id, _):
+            let detail = try await self.client.getPlaylist(id: id).detail
+            self.videoIds = detail.tracks.filter(\.isPlayable).map(\.videoId)
+        }
+        return self.videoIds
+    }
+
     func load() async {
-        self.phase = .loading
+        if self.options.isEmpty { self.phase = .loading }
         do {
-            let menu = try await self.client.getAddToPlaylistOptions(videoId: self.videoId)
+            let ids = try await self.resolveVideoIds()
+            guard let first = ids.first else {
+                self.phase = .failed("This has no songs to add.")
+                return
+            }
+            let menu = try await self.client.getAddToPlaylistOptions(videoId: first)
             self.menu = menu
-            self.added = Set(menu.options.filter(\.isSelected).map(\.playlistId))
+            self.options = menu.options
+            if ids.count == 1 { self.added = Set(menu.options.filter(\.isSelected).map(\.playlistId)) }
             self.phase = .loaded
         } catch is CancellationError {
         } catch {
@@ -41,7 +75,8 @@ final class AddToPlaylistModel {
         self.busyId = option.playlistId
         defer { self.busyId = nil }
         do {
-            try await self.client.addSongToPlaylist(videoId: self.videoId, playlistId: option.playlistId)
+            let ids = try await self.resolveVideoIds()
+            try await self.client.addSongsToPlaylist(videoIds: ids, playlistId: option.playlistId)
             self.added.insert(option.playlistId)
             self.message = "Added to \(option.title)"
         } catch {
@@ -49,13 +84,46 @@ final class AddToPlaylistModel {
         }
     }
 
-    func create(title: String, privacy: PlaylistPrivacyStatus) async {
+    /// Creates a playlist that starts with the songs, shows it straight away, then reloads the
+    /// list from the server once it has had time to catch up.
+    func create(title: String, privacy: PlaylistPrivacyStatus) async -> Bool {
         do {
-            _ = try await self.client.createPlaylist(title: title, privacyStatus: privacy, videoIds: [self.videoId])
+            let ids = try await self.resolveVideoIds()
+            let id = try await self.client.createPlaylist(title: title, privacyStatus: privacy, videoIds: ids)
+            let option = AddToPlaylistOption(
+                playlistId: id, title: title, subtitle: nil, thumbnailURL: nil,
+                isSelected: true, privacyStatus: privacy
+            )
+            self.options.insert(option, at: 0)
+            self.added.insert(id)
             self.message = "Created \(title)"
-            await self.load()
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(1.5))
+                await self?.reloadKeepingLocal(newId: id)
+            }
+            return true
         } catch {
             self.message = "Couldn't create the playlist: \(error.localizedDescription)"
+            return false
+        }
+    }
+
+    /// Merges the server's list with the playlist we just created, which the server may not
+    /// list yet.
+    private func reloadKeepingLocal(newId: String) async {
+        guard let first = self.videoIds.first,
+              let menu = try? await self.client.getAddToPlaylistOptions(videoId: first)
+        else { return }
+        var options = menu.options
+        if !options.contains(where: { $0.playlistId == newId }),
+           let local = self.options.first(where: { $0.playlistId == newId })
+        {
+            options.insert(local, at: 0)
+        }
+        self.menu = menu
+        self.options = options
+        if self.videoIds.count == 1 {
+            self.added.formUnion(menu.options.filter(\.isSelected).map(\.playlistId))
         }
     }
 }
@@ -66,8 +134,7 @@ struct AddToPlaylistSheet: View {
     @Environment(AppEnvironment.self) private var environment
     @Environment(\.dismiss) private var dismiss
 
-    let videoId: String
-    let songTitle: String?
+    let source: AddToPlaylistSource
 
     @State private var model: AddToPlaylistModel?
     @State private var isCreating = false
@@ -105,7 +172,7 @@ struct AddToPlaylistSheet: View {
         }
         .presentationDetents([.medium, .large])
         .task {
-            let model = self.model ?? AddToPlaylistModel(videoId: self.videoId, client: self.environment.client)
+            let model = self.model ?? AddToPlaylistModel(source: self.source, client: self.environment.client)
             self.model = model
             await model.load()
         }
@@ -115,11 +182,15 @@ struct AddToPlaylistSheet: View {
                 let title = self.newTitle.trimmingCharacters(in: .whitespacesAndNewlines)
                 self.newTitle = ""
                 guard !title.isEmpty, let model else { return }
-                Task { await model.create(title: title, privacy: self.newPrivacy) }
+                Task {
+                    if await model.create(title: title, privacy: self.newPrivacy) {
+                        self.environment.libraryRevision += 1
+                    }
+                }
             }
             Button("Cancel", role: .cancel) { self.newTitle = "" }
         } message: {
-            Text("The playlist starts with \(self.songTitle ?? "this song").")
+            Text("The playlist starts with \(self.source.displayTitle ?? "this song").")
         }
     }
 
@@ -146,7 +217,7 @@ struct AddToPlaylistSheet: View {
                     .pickerStyle(.menu)
                 }
                 Section("Your playlists") {
-                    ForEach(model.menu?.options ?? []) { option in
+                    ForEach(model.options) { option in
                         Button {
                             Task { await model.add(to: option) }
                         } label: {
@@ -180,7 +251,14 @@ extension View {
     /// Presents the add-to-playlist sheet for a song.
     func addToPlaylistSheet(isPresented: Binding<Bool>, videoId: String, title: String?) -> some View {
         self.sheet(isPresented: isPresented) {
-            AddToPlaylistSheet(videoId: videoId, songTitle: title)
+            AddToPlaylistSheet(source: .song(videoId: videoId, title: title))
+        }
+    }
+
+    /// Presents the add-to-playlist sheet for every song of a playlist or album.
+    func addToPlaylistSheet(isPresented: Binding<Bool>, collectionId: String, title: String) -> some View {
+        self.sheet(isPresented: isPresented) {
+            AddToPlaylistSheet(source: .collection(id: collectionId, title: title))
         }
     }
 }

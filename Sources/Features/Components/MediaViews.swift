@@ -110,7 +110,17 @@ struct MediaActions<Content: View>: View {
     let entity: MediaEntity
     @ViewBuilder var content: Content
 
+    @State private var isAddToPlaylistPresented = false
+
+    private var isSignedIn: Bool { self.environment.auth.state == .signedIn }
+
     var body: some View {
+        self.actions
+            .modifier(AddToPlaylistPresentation(entity: self.entity, isPresented: self.$isAddToPlaylistPresented))
+    }
+
+    @ViewBuilder
+    private var actions: some View {
         switch self.entity.target {
         case .song:
             Button(action: self.play) { self.content }
@@ -124,6 +134,11 @@ struct MediaActions<Content: View>: View {
                 .neutralMenuTint()
                 .contextMenu {
                     Button("Play", systemImage: "play.fill") { self.environment.playEntity(self.entity) }
+                    if self.isSignedIn {
+                        Button("Add to Playlist…", systemImage: "text.badge.plus") {
+                            self.isAddToPlaylistPresented = true
+                        }
+                    }
                 }
         case .artist, .mood:
             NavigationLink(value: self.entity) { self.content }
@@ -153,6 +168,11 @@ struct MediaActions<Content: View>: View {
             Button("Add to Queue", systemImage: "text.append") {
                 self.environment.player.addToQueue(videoId: videoId)
             }
+            if self.isSignedIn {
+                Button("Add to Playlist…", systemImage: "text.badge.plus") {
+                    self.isAddToPlaylistPresented = true
+                }
+            }
         }
     }
 }
@@ -169,6 +189,25 @@ struct LoadFailureView: View {
             Text(self.message)
         } actions: {
             Button("Try Again", action: self.retry)
+        }
+    }
+}
+
+/// Hosts the add-to-playlist sheet for a cover: one song, or a playlist/album's songs.
+private struct AddToPlaylistPresentation: ViewModifier {
+    let entity: MediaEntity
+    @Binding var isPresented: Bool
+
+    func body(content: Content) -> some View {
+        content.sheet(isPresented: self.$isPresented) {
+            switch self.entity.target {
+            case let .song(videoId):
+                AddToPlaylistSheet(source: .song(videoId: videoId, title: self.entity.title))
+            case let .playlist(id), let .album(id):
+                AddToPlaylistSheet(source: .collection(id: id, title: self.entity.title))
+            default:
+                EmptyView()
+            }
         }
     }
 }

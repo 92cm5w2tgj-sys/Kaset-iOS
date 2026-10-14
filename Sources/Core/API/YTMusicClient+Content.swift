@@ -231,6 +231,18 @@ extension YTMusicClient {
         self.cache.invalidateMutationCaches()
     }
 
+    /// Adds several songs in one request (one `ACTION_ADD_VIDEO` per song).
+    func addSongsToPlaylist(videoIds: [String], playlistId: String) async throws {
+        guard !videoIds.isEmpty else { return }
+        let clean = playlistId.hasPrefix("VL") ? String(playlistId.dropFirst(2)) : playlistId
+        let body: [String: Any] = [
+            "playlistId": clean,
+            "actions": videoIds.map { ["action": "ACTION_ADD_VIDEO", "addedVideoId": $0] },
+        ]
+        _ = try await self.request("browse/edit_playlist", body: body, authPolicy: .required)
+        self.cache.invalidateMutationCaches()
+    }
+
     /// `setVideoId` identifies the occurrence (a song can be in a playlist more than once).
     func removeSongFromPlaylist(videoId: String, setVideoId: String, playlistId: String) async throws {
         let clean = playlistId.hasPrefix("VL") ? String(playlistId.dropFirst(2)) : playlistId
