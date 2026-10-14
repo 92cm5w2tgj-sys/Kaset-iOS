@@ -40,7 +40,7 @@ Reference app: `~/Desktop/Developer/kaset` (see *Reference* in the plan)
 | K2 | Auth | ✅ | aa7d884 | 2026-10-14 |
 | K3 | Core API | ✅ | e3e5f3b | 2026-10-14 |
 | K4 | Playback engine | 🟦 | 087f867 | |
-| K5 | App shell | ⬜ | | |
+| K5 | App shell | 🟦 | e00721f | |
 | K6 | Home and Search | ⬜ | | |
 | K7 | Discover | ⬜ | | |
 | K8 | Collections and detail screens | ⬜ | | |
@@ -71,3 +71,4 @@ Reference app: `~/Desktop/Developer/kaset` (see *Reference* in the plan)
 | 2026-10-14 | K3 | `Core/`: models + Home/Search/Suggestions parsers copied from kaset (type names kept), `YTMusicClient` trimmed to browse pages (+continuations), search (+continuation), suggestions; auth via `AuthStore` (SAPISIDHASH, 401/403 → `authExpired` + `sessionExpired()`); API key resolved from the page. Checkpoint: kaset's Home/Search/Suggestions/ParsingHelpers/ResponseTreeSearch tests + fixtures ported, 119 tests green. `Debug/APIDebugView` shows live Home + Search. Not run against the live API yet (needs the device session). |
 | 2026-10-14 | K1–K3 | Confirmed on device by the user. Next: K4 (playback engine). |
 | 2026-10-14 | K4 | `Playback/`: `WebPlayer` (hidden 1×1 desktop-mode web view, commands go to the page, `PlaybackState` mirrors page events + 2 s/5 s heartbeat incl. queue snapshot), `PlayerScripts` (spike keep-alive + statechange/visibilitychange resume, Media Session next/previous, kaset play-next injection), `NowPlayingPublisher` (toggle `nativeNowPlaying`, default on), audio session + interruptions, diagnostics log. Spike lab retired. JS syntax checked with node; reducer tests green (126). **Not measured on device**: native vs page Now Playing card comparison and the 5-point background matrix are the user's verification. |
+| 2026-10-14 | K5 | `Features/Shell`: `MainTabView` (Home/Discover/Collections/Search role, `tabBarMinimizeBehavior(.onScrollDown)`, `tabViewBottomAccessory` mini player with inline/expanded placement, zoom transition to the Now Playing stub), `SignInView`, launch routing in `RootView`, minimal `SettingsView` (account + diagnostics entry). Tabs hold placeholders until K6–K8. Builds + tests green; not run on device. |
