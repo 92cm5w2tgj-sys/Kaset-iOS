@@ -25,6 +25,21 @@ carried over and the player was rebuilt for iOS.
 > undocumented endpoints that can change at any time. Use it with your own account and at your
 > own risk.
 
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="docs/screenshots/home.png" alt="Home" width="260"></td>
+    <td align="center"><img src="docs/screenshots/discover.png" alt="Discover" width="260"></td>
+    <td align="center"><img src="docs/screenshots/now-playing.png" alt="Now Playing" width="260"></td>
+  </tr>
+  <tr>
+    <td align="center"><sub><b>Home</b><br>Shelves, tab bar and mini player</sub></td>
+    <td align="center"><sub><b>Discover</b><br>Explore, Charts, Moods, New releases</sub></td>
+    <td align="center"><sub><b>Now Playing</b><br>Artwork-tinted, Apple Music layout</sub></td>
+  </tr>
+</table>
+
 ## Features
 
 - **Home, Discover, Collections, Search** tabs in the Apple Music layout, with the mini player as the
