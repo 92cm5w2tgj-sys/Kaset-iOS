@@ -7,10 +7,18 @@ final class AppEnvironment {
     /// The spike's player, kept alive for the whole app lifetime so playback survives
     /// navigating away from the debug lab. Replaced by `WebPlayer` in K4.
     let lab = PlayerModel()
-    let auth = AuthStore()
+    let auth: AuthStore
+    let client: YTMusicClient
 
     var isLabPresented = false
+    var isAPIDebugPresented = false
     var isLoginPresented = false
+
+    init() {
+        let auth = AuthStore()
+        self.auth = auth
+        self.client = YTMusicClient(auth: auth)
+    }
 
     /// Launch work: put the archived session back, and reload the web view if it was missing.
     func start() async {
@@ -28,6 +36,7 @@ final class AppEnvironment {
 
     func signOut() async {
         await self.auth.signOut()
+        self.client.resetSessionState()
         self.lab.reload()
     }
 }

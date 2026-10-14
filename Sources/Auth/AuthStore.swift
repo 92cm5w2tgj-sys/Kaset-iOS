@@ -78,6 +78,14 @@ final class AuthStore {
         await self.dataStore.removeData(ofTypes: types, for: records)
     }
 
+    /// An authenticated request came back 401/403: the session is gone server-side.
+    func sessionExpired() {
+        guard self.state == .signedIn else { return }
+        self.persistTask?.cancel()
+        self.vault.delete()
+        self.state = .signedOut
+    }
+
     /// Cookie header + SAPISID for one request, from the live jar.
     func material() async -> AuthMaterial? {
         AuthCookies.material(from: await self.cookieStore.allCookies())

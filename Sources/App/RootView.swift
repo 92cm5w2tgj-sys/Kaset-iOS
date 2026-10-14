@@ -16,6 +16,7 @@ struct RootView: View {
             self.accountRow
             Button("Debug lab") { environment.isLabPresented = true }
                 .buttonStyle(.borderedProminent)
+            Button("API debug") { environment.isAPIDebugPresented = true }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(alignment: .topLeading) {
@@ -30,6 +31,9 @@ struct RootView: View {
         .task { await environment.start() }
         .sheet(isPresented: $environment.isLoginPresented) {
             LoginView { Task { await environment.loginFinished() } }
+        }
+        .sheet(isPresented: $environment.isAPIDebugPresented) {
+            APIDebugView(client: environment.client)
         }
         .fullScreenCover(isPresented: $environment.isLabPresented) {
             DebugLabView(model: environment.lab)
