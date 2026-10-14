@@ -8,17 +8,40 @@ final class SearchViewModel {
         case idle, loading, loaded, failed(String)
     }
 
+    /// Results for one kind: the first page plus where the next one starts.
+    struct Bucket {
+        var items: [SearchResultItem] = []
+        var token: String?
+        var phase: Phase = .idle
+    }
+
     var query = ""
+    var scope: SearchFilter = .all
     private(set) var suggestions: [SearchSuggestion] = []
-    private(set) var results: [SearchResultItem] = []
-    private(set) var phase: Phase = .idle
     private(set) var submittedQuery = ""
+    private(set) var buckets: [SearchFilter: Bucket] = [:]
+    private(set) var recents: [String]
+    private(set) var isLoadingMore = false
 
     private let client: YTMusicClient
+    private static let recentsKey = "search.recents"
 
     init(client: YTMusicClient) {
         self.client = client
+        self.recents = UserDefaults.standard.stringArray(forKey: Self.recentsKey) ?? []
     }
+
+    var hasSubmitted: Bool { !self.submittedQuery.isEmpty }
+    var current: Bucket { self.buckets[self.scope] ?? Bucket() }
+
+    /// Kinds worth offering: "All" always, the others once the all-results contain them.
+    var availableScopes: [SearchFilter] {
+        let all = self.buckets[.all]?.items ?? []
+        let present = Set(all.compactMap(Self.filter(for:)))
+        return SearchFilter.allCases.filter { $0 == .all || present.contains($0) || $0 == self.scope }
+    }
+
+    // MARK: Suggestions and recents
 
     func updateSuggestions() async {
         let text = self.query.trimmingCharacters(in: .whitespaces)
@@ -31,40 +54,105 @@ final class SearchViewModel {
         self.suggestions = (try? await self.client.getSearchSuggestions(query: text)) ?? []
     }
 
+    func removeRecent(_ text: String) {
+        self.recents.removeAll { $0 == text }
+        UserDefaults.standard.set(self.recents, forKey: Self.recentsKey)
+    }
+
+    func clearRecents() {
+        self.recents = []
+        UserDefaults.standard.removeObject(forKey: Self.recentsKey)
+    }
+
+    private func remember(_ text: String) {
+        self.recents.removeAll { $0.caseInsensitiveCompare(text) == .orderedSame }
+        self.recents.insert(text, at: 0)
+        self.recents = Array(self.recents.prefix(10))
+        UserDefaults.standard.set(self.recents, forKey: Self.recentsKey)
+    }
+
+    // MARK: Searching
+
     func submit(_ text: String? = nil) async {
         let text = (text ?? self.query).trimmingCharacters(in: .whitespaces)
         guard !text.isEmpty else { return }
         self.query = text
         self.submittedQuery = text
         self.suggestions = []
-        self.phase = .loading
+        self.buckets = [:]
+        self.scope = .all
+        self.remember(text)
+        await self.load(.all)
+    }
+
+    func clearResults() {
+        self.submittedQuery = ""
+        self.buckets = [:]
+        self.scope = .all
+    }
+
+    func select(_ scope: SearchFilter) async {
+        self.scope = scope
+        if self.buckets[scope] == nil { await self.load(scope) }
+    }
+
+    private func load(_ scope: SearchFilter) async {
+        let text = self.submittedQuery
+        self.buckets[scope] = Bucket(items: [], token: nil, phase: .loading)
         do {
-            self.results = try await self.client.search(query: text).allItems
-            self.phase = .loaded
+            let response = try await self.client.search(query: text, filter: scope)
+            guard text == self.submittedQuery else { return }
+            self.buckets[scope] = Bucket(items: response.allItems, token: response.continuationToken, phase: .loaded)
         } catch is CancellationError {
-            self.phase = .idle
+            if self.buckets[scope]?.phase == .loading { self.buckets[scope] = nil }
         } catch {
-            self.phase = .failed(error.localizedDescription)
+            guard text == self.submittedQuery else { return }
+            self.buckets[scope] = Bucket(items: [], token: nil, phase: .failed(error.localizedDescription))
         }
     }
 
-    /// Results grouped for display; the server order is kept inside each group.
-    var groups: [(title: String, items: [MediaEntity])] {
-        var songs: [MediaEntity] = [], videos: [MediaEntity] = [], albums: [MediaEntity] = []
-        var artists: [MediaEntity] = [], playlists: [MediaEntity] = []
-        for item in self.results {
-            let entity = MediaEntity(item)
-            switch item {
-            case .song: songs.append(entity)
-            case .video: videos.append(entity)
-            case .album, .audiobook: albums.append(entity)
-            case .artist, .profile: artists.append(entity)
-            case .playlist: playlists.append(entity)
-            case .podcastShow, .podcastEpisode: break
-            }
+    func retry() async {
+        await self.load(self.scope)
+    }
+
+    /// Next page of a filtered list when its last row appears.
+    func loadMoreIfNeeded(after item: SearchResultItem) async {
+        let scope = self.scope
+        guard scope != .all, !self.isLoadingMore,
+              let bucket = self.buckets[scope], bucket.items.last?.id == item.id,
+              let token = bucket.token
+        else { return }
+        self.isLoadingMore = true
+        defer { self.isLoadingMore = false }
+        guard let page = try? await self.client.getSearchContinuation(token: token) else {
+            self.buckets[scope]?.token = nil
+            return
         }
-        return [("Songs", songs), ("Artists", artists), ("Albums", albums), ("Playlists", playlists), ("Videos", videos)]
-            .filter { !$0.1.isEmpty }
+        let known = Set(bucket.items.map(\.id))
+        self.buckets[scope]?.items += page.allItems.filter { !known.contains($0.id) }
+        self.buckets[scope]?.token = page.continuationToken
+    }
+
+    // MARK: Grouping
+
+    static func filter(for item: SearchResultItem) -> SearchFilter? {
+        switch item {
+        case .song: .songs
+        case .video: .videos
+        case .album, .audiobook: .albums
+        case .artist, .profile: .artists
+        case .playlist: .playlists
+        case .podcastShow, .podcastEpisode: nil
+        }
+    }
+
+    /// The "All" tab: results grouped by kind, server order kept inside each group.
+    var groupedAll: [(filter: SearchFilter, items: [SearchResultItem])] {
+        let items = self.buckets[.all]?.items ?? []
+        return [SearchFilter.songs, .artists, .albums, .playlists, .videos].compactMap { filter in
+            let matching = items.filter { Self.filter(for: $0) == filter }
+            return matching.isEmpty ? nil : (filter, matching)
+        }
     }
 }
 
@@ -76,7 +164,7 @@ struct SearchView: View {
         NavigationStack {
             Group {
                 if let model {
-                    self.content(model)
+                    SearchContent(model: model)
                 } else {
                     ProgressView()
                 }
@@ -89,44 +177,162 @@ struct SearchView: View {
             if self.model == nil { self.model = SearchViewModel(client: self.environment.client) }
         }
     }
+}
+
+private struct SearchContent: View {
+    @Environment(AppEnvironment.self) private var environment
+    @Bindable var model: SearchViewModel
+
+    var body: some View {
+        Group {
+            if !self.model.hasSubmitted {
+                self.idle
+            } else {
+                self.results
+            }
+        }
+        .searchable(text: self.$model.query, prompt: "Songs, albums, artists")
+        .searchSuggestions {
+            ForEach(self.model.suggestions) { suggestion in
+                Label(suggestion.query, systemImage: "magnifyingglass")
+                    .searchCompletion(suggestion.query)
+            }
+        }
+        .onSubmit(of: .search) { Task { await self.model.submit() } }
+        .onChange(of: self.model.query) { _, text in
+            if text.isEmpty { self.model.clearResults() }
+        }
+        .task(id: self.model.query) { await self.model.updateSuggestions() }
+    }
+
+    // MARK: Idle: recent searches
 
     @ViewBuilder
-    private func content(_ model: SearchViewModel) -> some View {
-        @Bindable var model = model
-
-        Group {
-            switch model.phase {
-            case .idle:
-                ContentUnavailableView("Search YouTube Music", systemImage: "magnifyingglass",
-                                       description: Text("Songs, albums, artists and playlists."))
-            case .loading:
-                ProgressView()
-            case let .failed(message):
-                LoadFailureView(message: message) { Task { await model.submit(model.submittedQuery) } }
-            case .loaded:
-                if model.groups.isEmpty {
-                    ContentUnavailableView.search(text: model.submittedQuery)
-                } else {
-                    List {
-                        ForEach(model.groups, id: \.title) { group in
-                            Section(group.title) {
-                                ForEach(group.items) { entity in
-                                    MediaActions(entity: entity) { MediaRow(entity: entity) }
-                                }
-                            }
+    private var idle: some View {
+        if self.model.recents.isEmpty {
+            ContentUnavailableView(
+                "Search YouTube Music", systemImage: "magnifyingglass",
+                description: Text("Songs, albums, artists, playlists and videos.")
+            )
+        } else {
+            List {
+                Section {
+                    ForEach(self.model.recents, id: \.self) { recent in
+                        Button {
+                            Task { await self.model.submit(recent) }
+                        } label: {
+                            Label(recent, systemImage: "clock.arrow.circlepath")
+                                .foregroundStyle(.primary)
+                        }
+                        .swipeActions {
+                            Button("Remove", role: .destructive) { self.model.removeRecent(recent) }
                         }
                     }
-                    .listStyle(.plain)
+                } header: {
+                    HStack {
+                        Text("Recent searches").font(.headline).textCase(nil)
+                        Spacer()
+                        Button("Clear") { self.model.clearRecents() }
+                            .font(.subheadline)
+                            .textCase(nil)
+                    }
+                }
+            }
+            .listStyle(.plain)
+        }
+    }
+
+    // MARK: Results
+
+    private var results: some View {
+        VStack(spacing: 0) {
+            self.scopePicker
+            switch self.model.current.phase {
+            case .idle, .loading:
+                ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+            case let .failed(message):
+                LoadFailureView(message: message) { Task { await self.model.retry() } }
+            case .loaded:
+                if self.model.current.items.isEmpty {
+                    ContentUnavailableView.search(text: self.model.submittedQuery)
+                } else if self.model.scope == .all {
+                    self.groupedList
+                } else {
+                    self.flatList
                 }
             }
         }
-        .searchable(text: $model.query, prompt: "Songs, albums, artists")
-        .searchSuggestions {
-            ForEach(model.suggestions) { suggestion in
-                Text(suggestion.query).searchCompletion(suggestion.query)
+    }
+
+    /// Segmented control with symbols only: six titles would not fit one line. The selected
+    /// kind's name is announced to VoiceOver and shown as the list's heading.
+    private var scopePicker: some View {
+        Picker("Kind", selection: Binding(
+            get: { self.model.scope },
+            set: { newValue in Task { await self.model.select(newValue) } }
+        )) {
+            ForEach(self.model.availableScopes) { filter in
+                Image(systemName: filter.symbol)
+                    .accessibilityLabel(filter.title)
+                    .tag(filter)
             }
         }
-        .onSubmit(of: .search) { Task { await model.submit() } }
-        .task(id: model.query) { await model.updateSuggestions() }
+        .pickerStyle(.segmented)
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+    }
+
+    private var groupedList: some View {
+        List {
+            ForEach(self.model.groupedAll, id: \.filter) { group in
+                Section {
+                    ForEach(group.items.prefix(5)) { item in self.row(item) }
+                    if group.items.count > 5 {
+                        Button {
+                            Task { await self.model.select(group.filter) }
+                        } label: {
+                            HStack {
+                                Text("See all")
+                                Spacer()
+                                Image(systemName: "chevron.right").font(.footnote.weight(.semibold))
+                            }
+                            .font(.subheadline.weight(.semibold))
+                        }
+                    }
+                } header: {
+                    Label(group.filter.title, systemImage: group.filter.symbol)
+                        .font(.title3.weight(.bold))
+                        .foregroundStyle(.primary)
+                        .textCase(nil)
+                }
+            }
+        }
+        .listStyle(.plain)
+    }
+
+    private var flatList: some View {
+        List {
+            ForEach(self.model.current.items) { item in
+                self.row(item)
+                    .task { await self.model.loadMoreIfNeeded(after: item) }
+            }
+            if self.model.isLoadingMore {
+                ProgressView().frame(maxWidth: .infinity)
+            }
+        }
+        .listStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func row(_ item: SearchResultItem) -> some View {
+        switch item {
+        case let .song(song), let .video(song):
+            TrackRow(song: song) {
+                self.environment.player.play(videoId: song.videoId, playlistId: "RDAMVM\(song.videoId)")
+            }
+        default:
+            let entity = MediaEntity(item)
+            MediaActions(entity: entity) { MediaRow(entity: entity) }
+        }
     }
 }

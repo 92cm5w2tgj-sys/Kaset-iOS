@@ -142,3 +142,23 @@ extension MediaEntity {
         )
     }
 }
+
+extension MediaEntity {
+    /// Whether the player is currently on this entity (a song, or a playlist/album queue).
+    func isCurrent(in identity: PlaybackIdentity) -> Bool {
+        switch self.target {
+        case let .song(videoId):
+            return identity.videoId == videoId
+        case let .playlist(id):
+            guard let list = identity.listId else { return false }
+            return list == Self.watchPlaylistId(id)
+        case .album:
+            // Album cards only know the browse id, not the playable `OLAK…` list, so the
+            // album name the page reports is the available signal.
+            guard let album = identity.album, identity.videoId != nil else { return false }
+            return album.caseInsensitiveCompare(self.title) == .orderedSame
+        default:
+            return false
+        }
+    }
+}

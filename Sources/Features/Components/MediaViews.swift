@@ -27,6 +27,7 @@ struct MediaCard: View {
                 }
                 .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
                 .overlay(alignment: .bottomTrailing) { self.quickPlay }
+                .overlay(alignment: .topLeading) { self.nowPlayingBadge }
             Text(self.entity.title)
                 .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
@@ -40,6 +41,20 @@ struct MediaCard: View {
         }
         .frame(width: self.width, alignment: .leading)
         .multilineTextAlignment(.leading)
+    }
+
+    /// Animated bars on the cover of whatever the player is on (song, playlist, album).
+    @ViewBuilder
+    private var nowPlayingBadge: some View {
+        let identity = self.environment.player.identity
+        if self.entity.isCurrent(in: identity) {
+            EqualizerView(isAnimating: identity.isPlaying, color: .white)
+                .frame(width: 16, height: 14)
+                .padding(8)
+                .background(.black.opacity(0.55), in: Circle())
+                .padding(8)
+                .accessibilityLabel("Now playing")
+        }
     }
 
     /// Playlists and albums open their page on tap; this plays them without opening it.

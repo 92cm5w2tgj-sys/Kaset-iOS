@@ -121,3 +121,13 @@ struct PlaybackState: Equatable, Sendable {
         }
     }
 }
+
+/// What is playing, reduced to what lists and covers need to light up their "now playing"
+/// indicator. Separate from `PlaybackState` so views that read it are only invalidated when
+/// the track, list or play/pause state really changes, not on every position update.
+struct PlaybackIdentity: Equatable, Sendable {
+    var videoId: String?
+    var listId: String?
+    var album: String?
+    var isPlaying = false
+}

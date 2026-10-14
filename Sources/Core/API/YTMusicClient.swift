@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // Trimmed from kaset: Services/API/YTMusicClient.swift (request building, auth headers,
 // error mapping, pagination, API key resolution). Only Home/browse, Search, suggestions and
@@ -124,8 +125,11 @@ final class YTMusicClient {
 
     // MARK: - Search
 
-    func search(query: String) async throws -> SearchResponse {
-        let data = try await self.request("search", body: ["query": query], ttl: APICache.TTL.search)
+    /// Search, optionally restricted to one kind (YouTube Music's own filter params, from kaset).
+    func search(query: String, filter: SearchFilter = .all) async throws -> SearchResponse {
+        var body: [String: Any] = ["query": query]
+        if let params = filter.params { body["params"] = params }
+        let data = try await self.request("search", body: body, ttl: APICache.TTL.search)
         return SearchResponseParser.parse(data)
     }
 
@@ -381,5 +385,46 @@ final class YTMusicAPIKeyResolver {
               let range = Range(match.range(at: 1), in: html)
         else { return nil }
         return String(html[range])
+    }
+}
+
+/// Result kinds the search screen can restrict to. The `params` strings are the ones kaset's
+/// `YTMusicClient.SearchFilterParams` sends.
+enum SearchFilter: String, CaseIterable, Identifiable {
+    case all, songs, artists, albums, playlists, videos
+
+    var id: String { self.rawValue }
+
+    var params: String? {
+        switch self {
+        case .all: nil
+        case .songs: "EgWKAQIIAWoMEA4QChADEAQQCRAF"
+        case .videos: "EgWKAQIQAWoMEA4QChADEAQQCRAF"
+        case .albums: "EgWKAQIYAWoMEA4QChADEAQQCRAF"
+        case .artists: "EgWKAQIgAWoMEA4QChADEAQQCRAF"
+        case .playlists: "EgWKAQIoAWoMEA4QChADEAQQCRAF"
+        }
+    }
+
+    var title: LocalizedStringKey {
+        switch self {
+        case .all: "All"
+        case .songs: "Songs"
+        case .artists: "Artists"
+        case .albums: "Albums"
+        case .playlists: "Playlists"
+        case .videos: "Videos"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .all: "square.grid.2x2"
+        case .songs: "music.note"
+        case .artists: "music.mic"
+        case .albums: "square.stack"
+        case .playlists: "music.note.list"
+        case .videos: "play.rectangle"
+        }
     }
 }

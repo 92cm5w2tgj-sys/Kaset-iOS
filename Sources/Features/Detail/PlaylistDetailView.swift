@@ -117,6 +117,7 @@ struct PlaylistDetailView: View {
             ArtworkView(url: detail.thumbnailURL ?? self.thumbnailURL)
                 .frame(width: 250, height: 250)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .overlay(alignment: .topLeading) { self.nowPlayingBadge(detail, model: model) }
                 .shadow(color: .black.opacity(0.25), radius: 18, y: 10)
                 .padding(.top, 8)
 
@@ -138,6 +139,22 @@ struct PlaylistDetailView: View {
             }
         }
         .frame(maxWidth: .infinity)
+    }
+
+    /// Same cue as on the cards: this is the collection the player is on.
+    @ViewBuilder
+    private func nowPlayingBadge(_ detail: PlaylistDetail, model: PlaylistDetailModel) -> some View {
+        let identity = self.environment.player.identity
+        let isThisList = model.watchListId.map { $0 == identity.listId } ?? false
+        let isThisAlbum = detail.isAlbum
+            && identity.album?.caseInsensitiveCompare(detail.title) == .orderedSame
+        if isThisList || isThisAlbum {
+            EqualizerView(isAnimating: identity.isPlaying, color: .white)
+                .frame(width: 18, height: 16)
+                .padding(10)
+                .background(.black.opacity(0.55), in: Circle())
+                .padding(10)
+        }
     }
 
     private static func byline(for detail: PlaylistDetail) -> String {
@@ -205,11 +222,11 @@ struct TrackRow: View {
     /// This row is the track the web player is on (not an ad, not another occurrence of a
     /// different song).
     private var isCurrent: Bool {
-        self.environment.player.state.videoId == self.song.videoId
+        self.environment.player.identity.videoId == self.song.videoId
     }
 
     private var isPlaying: Bool {
-        self.isCurrent && self.environment.player.state.isPlaying
+        self.isCurrent && self.environment.player.identity.isPlaying
     }
 
     var body: some View {

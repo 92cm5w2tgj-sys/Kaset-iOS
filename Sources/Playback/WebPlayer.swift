@@ -27,7 +27,11 @@ final class WebPlayer: NSObject {
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15"
 
     private(set) var webView: WKWebView
-    private(set) var state = PlaybackState()
+    private(set) var state = PlaybackState() {
+        didSet { self.refreshIdentity() }
+    }
+    /// Changes only when the track, list or play state does (see `PlaybackIdentity`).
+    private(set) var identity = PlaybackIdentity()
     /// Result of the last play-next attempt: `(videoId, success, reason)`.
     private(set) var lastQueueResult: (videoId: String, success: Bool, reason: String)?
     private(set) var generation = 0
@@ -249,6 +253,16 @@ final class WebPlayer: NSObject {
         "play-next-item-not-found", "add-to-queue-item-not-found", "menu-timeout",
         "player-bar-menu-not-found", "queue-source-not-ready", "menu-source-mismatch",
     ]
+
+    private func refreshIdentity() {
+        let next = PlaybackIdentity(
+            videoId: self.state.hasMedia ? self.state.videoId : nil,
+            listId: self.state.listId,
+            album: self.state.album,
+            isPlaying: self.state.isPlaying
+        )
+        if next != self.identity { self.identity = next }
+    }
 
     private func postNotice(_ text: String) {
         self.queueNotice = text
