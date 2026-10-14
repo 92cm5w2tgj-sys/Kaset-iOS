@@ -33,6 +33,11 @@ struct PlaybackDebugView: View {
                             .font(.footnote.monospacedDigit())
                     }
                     Text("\(s.title ?? "—") · \(s.artist ?? "—")").font(.footnote)
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        let age = self.player.lastMessageAt.map { "\(Int(context.date.timeIntervalSince($0))) s" } ?? "jamais"
+                        Text("Dernier message de la page : \(age)\n\(self.player.pageURL ?? "page non chargée")")
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
                     Text("id=\(s.videoId ?? "-") next=\(s.canGoNext ? "✓" : "✗") prev=\(s.canGoPrevious ? "✓" : "✗")")
                         .font(.caption).foregroundStyle(.secondary)
                 }

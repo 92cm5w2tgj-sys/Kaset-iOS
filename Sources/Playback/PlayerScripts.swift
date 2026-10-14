@@ -51,15 +51,40 @@ enum PlayerScripts {
           const visDesc = Object.getOwnPropertyDescriptor(Document.prototype, 'visibilityState');
           const realVis = () => { try { return visDesc.get.call(document); } catch (e) { return 'unknown'; } };
           const media = () => document.querySelector('video') || document.querySelector('audio');
+          // The slotted-bar lookup (kaset) is tried first; the spike's plain selectors and the
+          // player API are fallbacks so controls keep working if the DOM shape differs.
+          const legacy = {
+            playPause: '.play-pause-button.ytmusic-player-bar',
+            next: '.next-button.ytmusic-player-bar',
+            previous: '.previous-button.ytmusic-player-bar'
+          };
+          const control = (name) => {
+            let b = null;
+            try { b = __kasetPlayerBarElement(name); } catch (e) {}
+            if (!b && legacy[name]) { b = document.querySelector(legacy[name]); }
+            return b;
+          };
+          const playerApi = () => {
+            const p = document.querySelector('ytmusic-player');
+            if (p && p.playerApi) { return p.playerApi; }
+            return document.getElementById('movie_player');
+          };
           const click = (name) => {
-            const b = __kasetPlayerBarElement(name);
-            if (!b) { return 'missing:' + name; }
-            b.click();
-            return 'clicked';
+            const b = control(name);
+            if (b) { b.click(); return 'clicked'; }
+            const m = media();
+            const api = playerApi();
+            try {
+              if (name === 'playPause' && m) { if (m.paused) { m.play(); } else { m.pause(); } return 'media-toggle'; }
+              if (name === 'next' && api && api.nextVideo) { api.nextVideo(); return 'api-next'; }
+              if (name === 'previous' && api && api.previousVideo) { api.previousVideo(); return 'api-previous'; }
+            } catch (e) { return 'error:' + String(e); }
+            return 'missing:' + name;
           };
           const enabled = (name) => {
-            const b = __kasetPlayerBarElement(name);
-            return !!b && !b.disabled && b.getAttribute('aria-disabled') !== 'true';
+            const b = control(name);
+            if (!b) { return true; }
+            return !b.disabled && b.getAttribute('aria-disabled') !== 'true';
           };
 
           const videoId = () => {

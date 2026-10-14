@@ -30,6 +30,9 @@ final class WebPlayer: NSObject {
     /// Result of the last play-next attempt: `(videoId, success, reason)`.
     private(set) var lastQueueResult: (videoId: String, success: Bool, reason: String)?
     private(set) var generation = 0
+    /// When the page last reported anything, and the page's address; for the debug readout.
+    private(set) var lastMessageAt: Date?
+    private(set) var pageURL: String?
 
     @ObservationIgnored private let log = SpikeLog.shared
     @ObservationIgnored private let proxy = MessageProxy()
@@ -167,6 +170,7 @@ final class WebPlayer: NSObject {
 
     fileprivate func handle(_ message: [String: Any]) {
         guard let kind = message["kind"] as? String else { return }
+        self.lastMessageAt = Date()
         switch kind {
         case "state":
             let now = Date()
@@ -312,6 +316,7 @@ final class WebPlayer: NSObject {
 
 extension WebPlayer: WKNavigationDelegate, WKUIDelegate {
     func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
+        self.pageURL = webView.url?.absoluteString
         self.log.log("nav", "didFinish \(webView.url?.absoluteString.prefix(80) ?? "")")
     }
 
