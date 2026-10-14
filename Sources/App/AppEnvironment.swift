@@ -16,6 +16,10 @@ final class AppEnvironment {
     /// Full-screen Now Playing. Lives here so any screen can open it (e.g. cover quick-play).
     var isNowPlayingPresented = false
 
+    /// Bumped after the user's library changes (playlist created, renamed, deleted) so the
+    /// Library screen reloads.
+    var libraryRevision = 0
+
     var isPlaybackDebugPresented = false
     var isLoginPresented = false
 

@@ -12,6 +12,8 @@ final class PlaylistDetailModel {
     private let client: YTMusicClient
 
     private(set) var detail: PlaylistDetail?
+    /// Shown after a successful rename, until the page is loaded again.
+    private(set) var renamedTitle: String?
     private(set) var tracks: [Song] = []
     private(set) var phase: Phase = .loading
     private var continuationToken: String?
@@ -41,6 +43,27 @@ final class PlaylistDetailModel {
         } catch is CancellationError {
         } catch {
             self.phase = .failed(error.localizedDescription)
+        }
+    }
+
+    func rename(to title: String) async -> Bool {
+        guard let detail else { return false }
+        do {
+            try await self.client.renamePlaylist(id: detail.id, title: title)
+            self.renamedTitle = title
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    func delete() async -> Bool {
+        guard let detail else { return false }
+        do {
+            try await self.client.deletePlaylist(id: detail.id)
+            return true
+        } catch {
+            return false
         }
     }
 
@@ -75,6 +98,11 @@ final class PlaylistDetailModel {
 struct PlaylistDetailView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var model: PlaylistDetailModel?
+    @State private var isRenaming = false
+    @State private var renameText = ""
+    @State private var isConfirmingDelete = false
+    @State private var failureMessage: String?
+    @Environment(\.dismiss) private var dismiss
 
     let id: String
     var fallbackTitle: String = ""
@@ -88,9 +116,47 @@ struct PlaylistDetailView: View {
                 ProgressView()
             }
         }
-        .navigationTitle(self.model?.detail?.title ?? self.fallbackTitle)
+        .navigationTitle(self.model?.renamedTitle ?? self.model?.detail?.title ?? self.fallbackTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar { self.detailToolbar }
+        .alert("Rename Playlist", isPresented: self.$isRenaming) {
+            TextField("Title", text: self.$renameText)
+            Button("Rename") {
+                let title = self.renameText.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !title.isEmpty, let model else { return }
+                Task {
+                    if await model.rename(to: title) {
+                        self.environment.libraryRevision += 1
+                    } else {
+                        self.failureMessage = "Couldn't rename the playlist."
+                    }
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        }
+        .confirmationDialog("Delete this playlist?", isPresented: self.$isConfirmingDelete, titleVisibility: .visible) {
+            Button("Delete Playlist", role: .destructive) {
+                guard let model else { return }
+                Task {
+                    if await model.delete() {
+                        self.environment.libraryRevision += 1
+                        self.dismiss()
+                    } else {
+                        self.failureMessage = "Couldn't delete the playlist."
+                    }
+                }
+            }
+        } message: {
+            Text("This can't be undone.")
+        }
+        .alert("Playlist", isPresented: Binding(
+            get: { self.failureMessage != nil },
+            set: { if !$0 { self.failureMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(self.failureMessage ?? "")
+        }
         .task {
             if self.model == nil { self.model = PlaylistDetailModel(id: self.id, client: self.environment.client) }
             if self.model?.detail == nil { await self.model?.load() }
@@ -200,6 +266,16 @@ struct PlaylistDetailView: View {
                     }
                     if let url = URL(string: "https://music.youtube.com/playlist?list=\(self.model?.watchListId ?? MediaEntity.watchPlaylistId(detail.id))") {
                         ShareLink(item: url) { Label("Share", systemImage: "square.and.arrow.up") }
+                    }
+                    if detail.canDelete {
+                        Divider()
+                        Button("Rename…", systemImage: "pencil") {
+                            self.renameText = self.model?.renamedTitle ?? detail.title
+                            self.isRenaming = true
+                        }
+                        Button("Delete Playlist", systemImage: "trash", role: .destructive) {
+                            self.isConfirmingDelete = true
+                        }
                     }
                 } label: {
                     Image(systemName: "ellipsis")

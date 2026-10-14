@@ -241,4 +241,22 @@ extension YTMusicClient {
         _ = try await self.request("browse/edit_playlist", body: body, authPolicy: .required)
         self.cache.invalidateMutationCaches()
     }
+
+    /// Renames a playlist the user owns (`ACTION_SET_PLAYLIST_NAME`, as ytmusicapi does).
+    func renamePlaylist(id: String, title: String) async throws {
+        let clean = id.hasPrefix("VL") ? String(id.dropFirst(2)) : id
+        let body: [String: Any] = [
+            "playlistId": clean,
+            "actions": [["action": "ACTION_SET_PLAYLIST_NAME", "playlistName": title]],
+        ]
+        _ = try await self.request("browse/edit_playlist", body: body, authPolicy: .required)
+        self.cache.invalidateMutationCaches()
+    }
+
+    /// Permanently deletes a playlist the user owns (kaset `deletePlaylist`).
+    func deletePlaylist(id: String) async throws {
+        let clean = id.hasPrefix("VL") ? String(id.dropFirst(2)) : id
+        _ = try await self.request("playlist/delete", body: ["playlistId": clean], authPolicy: .required)
+        self.cache.invalidateMutationCaches()
+    }
 }

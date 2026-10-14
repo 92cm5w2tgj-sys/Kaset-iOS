@@ -16,7 +16,6 @@ struct CollectionsView: View {
     @State private var history: BrowsePageModel?
     @State private var isCreatingPlaylist = false
     @State private var newPlaylistTitle = ""
-    @State private var libraryRefresh = 0
 
     var body: some View {
         NavigationStack {
@@ -31,7 +30,7 @@ struct CollectionsView: View {
                         .padding(.bottom, 8)
 
                         switch self.selection {
-                        case .library: LibraryContentView().id(self.libraryRefresh)
+                        case .library: LibraryContentView().id(self.environment.libraryRevision)
                         case .liked: LikedMusicView()
                         case .history:
                             if let history = self.history {
@@ -69,7 +68,7 @@ struct CollectionsView: View {
                     guard !title.isEmpty else { return }
                     Task {
                         _ = try? await self.environment.client.createPlaylist(title: title)
-                        self.libraryRefresh += 1
+                        self.environment.libraryRevision += 1
                     }
                 }
                 Button("Cancel", role: .cancel) { self.newPlaylistTitle = "" }
