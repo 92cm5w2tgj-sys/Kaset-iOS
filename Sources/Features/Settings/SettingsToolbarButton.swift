@@ -14,8 +14,29 @@ private struct SettingsSheetButton: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var isPresented = false
 
+    private var isSignedIn: Bool { self.environment.auth.state == .signedIn }
+
     var body: some View {
-        Button { self.isPresented = true } label: {
+        // Signed in: opens Settings. Guest: tapping signs in, long press offers Settings.
+        Menu {
+            Button("Settings", systemImage: "gearshape") { self.isPresented = true }
+        } label: {
+            self.label
+        } primaryAction: {
+            if self.isSignedIn {
+                self.isPresented = true
+            } else {
+                self.environment.isLoginPresented = true
+            }
+        }
+        .neutralMenuTint()
+        .accessibilityLabel(self.isSignedIn ? "Settings" : "Sign in")
+        .sheet(isPresented: self.$isPresented) { SettingsView() }
+    }
+
+    @ViewBuilder
+    private var label: some View {
+        Group {
             if let url = self.environment.accountAvatarURL {
                 AsyncImage(url: url) { phase in
                     switch phase {
@@ -31,7 +52,5 @@ private struct SettingsSheetButton: View {
                 Image(systemName: "person.crop.circle")
             }
         }
-        .accessibilityLabel("Settings")
-        .sheet(isPresented: self.$isPresented) { SettingsView() }
     }
 }

@@ -221,11 +221,13 @@ struct NowPlayingView: View {
             Spacer(minLength: 0)
             Menu {
                 if let videoId = state.videoId, let model {
-                    Button(
-                        model.likeStatus == .like ? "Unlike" : "Like",
-                        systemImage: model.likeStatus == .like ? "heart.slash" : "heart"
-                    ) {
-                        Task { await model.toggleLike(videoId: videoId) }
+                    if self.environment.auth.state == .signedIn {
+                        Button(
+                            model.likeStatus == .like ? "Unlike" : "Like",
+                            systemImage: model.likeStatus == .like ? "heart.slash" : "heart"
+                        ) {
+                            Task { await model.toggleLike(videoId: videoId) }
+                        }
                     }
                     Button("Play Next", systemImage: "text.insert") { self.environment.player.playNext(videoId: videoId) }
                     if let url = URL(string: "https://music.youtube.com/watch?v=\(videoId)") {

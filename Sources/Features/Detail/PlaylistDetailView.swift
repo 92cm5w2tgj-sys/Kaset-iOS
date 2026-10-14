@@ -231,8 +231,10 @@ struct TrackRow: View {
     private var menuItems: some View {
         Button("Play Next", systemImage: "text.insert") { self.environment.player.playNext(videoId: self.song.videoId) }
         Button("Add to Queue", systemImage: "text.append") { self.environment.player.addToQueue(videoId: self.song.videoId) }
-        Button("Like", systemImage: "heart") {
-            Task { try? await self.environment.client.rateSong(videoId: self.song.videoId, rating: .like) }
+        if self.environment.auth.state == .signedIn {
+            Button("Like", systemImage: "heart") {
+                Task { try? await self.environment.client.rateSong(videoId: self.song.videoId, rating: .like) }
+            }
         }
     }
 

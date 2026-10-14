@@ -337,9 +337,6 @@
         }
       }
     },
-    "Kaset" : {
-
-    },
     "Less" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -806,6 +803,7 @@
       }
     },
     "Sign in with your Google account to play your music." : {
+      "extractionState" : "stale",
       "localizations" : {
         "fr" : {
           "stringUnit" : {

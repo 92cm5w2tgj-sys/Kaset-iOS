@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Launch routing: unknown → splash, signed out → sign-in, signed in → tabs. The player's web
+/// Launch routing: unknown → splash, otherwise the tabs (signed-out users are guests). The player's web
 /// view stays attached to the window as a hidden 1×1 view for the whole app lifetime so audio
 /// keeps running.
 struct RootView: View {
@@ -14,9 +14,8 @@ struct RootView: View {
             case .unknown:
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            case .signedOut:
-                SignInView()
-            case .signedIn:
+            case .signedOut, .signedIn:
+                // Signed-out users browse as guests; sign-in lives on the navigation bar button.
                 MainTabView()
             }
         }
