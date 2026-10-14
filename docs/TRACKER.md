@@ -42,11 +42,11 @@ Reference app: `~/Desktop/Developer/kaset` (see *Reference* in the plan)
 | K4 | Playback engine | ✅ | 087f867 | 2026-10-14 |
 | K5 | App shell | ✅ | e00721f | 2026-10-14 |
 | K6 | Home and Search | ✅ | 19cbf63 | 2026-10-14 |
-| K7 | Discover | ⬜ | | |
-| K8 | Collections and detail screens | ⬜ | | |
-| K9 | Now Playing and Queue | ⬜ | | |
-| K10 | Settings, account, polish | ⬜ | | |
-| K11 | Hardening | ⬜ | | |
+| K7 | Discover | 🟦 | 99cfc1e | |
+| K8 | Collections and detail screens | 🟦 | 99cfc1e | |
+| K9 | Now Playing and Queue | 🟦 | 99cfc1e | |
+| K10 | Settings, account, polish | 🟦 | 99cfc1e | |
+| K11 | Hardening | 🟦 | 99cfc1e | |
 | K12 | Docs, distribution | ⬜ | | |
 
 ## Findings carried over from the abandoned port (kaset `feat/ios-port`, S1–S5)
@@ -74,3 +74,9 @@ Reference app: `~/Desktop/Developer/kaset` (see *Reference* in the plan)
 | 2026-10-14 | K5 | `Features/Shell`: `MainTabView` (Home/Discover/Collections/Search role, `tabBarMinimizeBehavior(.onScrollDown)`, `tabViewBottomAccessory` mini player with inline/expanded placement, zoom transition to the Now Playing stub), `SignInView`, launch routing in `RootView`, minimal `SettingsView` (account + diagnostics entry). Tabs hold placeholders until K6–K8. Builds + tests green; not run on device. |
 | 2026-10-14 | K6 | `Features/Home` (shelves, pull to refresh, load more via continuation), `Features/Search` (suggestions, grouped results), shared `MediaEntity`/`MediaActions`: tap = `WebPlayer.play` (songs → radio `RDAMVM<id>`, playlists → `watch?list=`), context menu = play / play next / add to queue (new `PlayerScripts.addToQueue`, inspired by kaset's queue injection, **unverified on a real page**). Albums/artists push a placeholder until K8. Tests 129 green. Awaiting device verification. |
 | 2026-10-14 | K4–K6 | Confirmed on device by the user after the Now Playing artwork isolation fix. |
+| 2026-10-14 | K7 | `Features/Discover` (segmented Explore/Charts/Moods/New releases, each keeps its model + scroll: segments are loaded once then only hidden), `BrowsePageModel`/`BrowsePageView` shared with Home, `MoodCategoryView`, `entityDestinations()` routing. |
+| 2026-10-14 | K8 | `Features/Collections` (Library via landing + dedicated endpoints, Liked music paginated via `VLLM`, History), `PlaylistDetailView` (albums play through their `OLAK…` library target, Shuffle = play + page shuffle), `ArtistDetailView` (radio/follow), like / add-remove library / share. Signed-out prompt. |
+| 2026-10-14 | K9 | `Features/NowPlaying`: scrubber (seek on release), like (rateSong + getSong status), shuffle/repeat, lyrics sheet, AirPlay route picker, queue sheet (tap = jump, swipe = remove). **Queue reorder not implemented** (no verified page mechanism). Shuffle/repeat state and queue jump/remove use page selectors that are **best effort and unverified on device**. |
+| 2026-10-14 | K10 | Settings: account list + switch (loads the account's sign-in URL in a shared-cookie web view, then API `onBehalfOfUser`, then player reload — unverified), audio quality (kaset's page override script copied), content language (`hl`), haptics. French string catalog, accessibility labels on controls, system materials only. Dynamic Type / VoiceOver pass is the user's. |
+| 2026-10-14 | K11 | Recovery: WebContent termination, `error`/`stalled`/`emptied` stuck for 8 s, network back → reload same track/list/position (rate limited 15 s); last session saved every ≥5 s and shown in the mini player after a cold start, play resumes it at its position. **Not done here**: the ≥60 min locked run with battery delta is a device measurement; expired-stream behaviour is covered by the stuck-stream path but untested. |
+| 2026-10-14 | K7–K11 | Built in one batch at the user's request; one commit for all five (the steps share the client, entity routing and page script), each row marked 🟦 individually. 133 tests green. |
