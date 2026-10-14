@@ -8,8 +8,8 @@ struct WebViewHost: UIViewRepresentable {
     func updateUIView(_: WKWebView, context _: Context) {}
 }
 
-struct ContentView: View {
-    @StateObject private var model = PlayerModel()
+struct DebugLabView: View {
+    @ObservedObject var model: PlayerModel
     @ObservedObject private var log = SpikeLog.shared
 
     @AppStorage("desktopUA") private var desktopUA = true

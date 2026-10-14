@@ -1,15 +1,15 @@
-name: YTMSpike
+name: KasetiOS
 options:
   bundleIdPrefix: dev.emoona
   deploymentTarget:
-    iOS: "17.0"
+    iOS: "26.0"
   createIntermediateGroups: true
 settings:
   base:
-    SWIFT_VERSION: "5.0"
+    SWIFT_VERSION: "6.0"
     CODE_SIGN_STYLE: Automatic
 targets:
-  YTMSpike:
+  KasetiOS:
     type: application
     platform: iOS
     sources:
@@ -17,7 +17,7 @@ targets:
     info:
       path: Sources/Info.plist
       properties:
-        CFBundleDisplayName: YTM Spike
+        CFBundleDisplayName: Kaset
         UIBackgroundModes:
           - audio
         UILaunchScreen: {}
@@ -30,6 +30,18 @@ targets:
         LSSupportsOpeningDocumentsInPlace: true
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.emoona.ytmspike
+        PRODUCT_BUNDLE_IDENTIFIER: dev.emoona.kaset
+        PRODUCT_NAME: KasetiOS
         MARKETING_VERSION: "0.1"
         CURRENT_PROJECT_VERSION: "1"
+  KasetiOSTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests/KasetiOSTests
+    dependencies:
+      - target: KasetiOS
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: dev.emoona.kaset.tests
