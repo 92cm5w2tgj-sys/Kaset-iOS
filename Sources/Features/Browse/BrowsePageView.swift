@@ -23,13 +23,33 @@ final class BrowsePageModel {
 
     var hasMore: Bool { self.client.hasMore(self.type) }
 
+    /// Browse ids of the shortcut buttons YouTube Music puts on its Explore page. They point at
+    /// surfaces that already are Discover segments, so they are dropped here.
+    private static let shortcutBrowseIds: Set<String> = [
+        "FEmusic_moods_and_genres", "FEmusic_charts", "FEmusic_new_releases", "FEmusic_explore",
+    ]
+
+    private static func withoutShortcuts(_ sections: [HomeSection]) -> [HomeSection] {
+        sections.compactMap { section in
+            let items = section.items.filter { item in
+                guard case let .playlist(playlist) = item else { return true }
+                let browseId = playlist.resolvedMoodCategoryEndpoint?.browseId ?? playlist.id
+                return !Self.shortcutBrowseIds.contains(browseId)
+            }
+            guard !items.isEmpty else { return nil }
+            return items.count == section.items.count
+                ? section
+                : HomeSection(id: section.id, title: section.title, items: items, isChart: section.isChart)
+        }
+    }
+
     func load(force: Bool = false) async {
         if self.phase == .loading { return }
         if !force, self.phase == .loaded { return }
         if self.sections.isEmpty { self.phase = .loading }
         do {
             let response = try await self.client.page(self.type, forceRefresh: force)
-            self.sections = response.sections
+            self.sections = Self.withoutShortcuts(response.sections)
             self.phase = .loaded
         } catch is CancellationError {
             if self.sections.isEmpty { self.phase = .idle }
@@ -44,7 +64,7 @@ final class BrowsePageModel {
         defer { self.isLoadingMore = false }
         guard let more = try? await self.client.continuation(for: self.type) else { return }
         let known = Set(self.sections.map(\.id))
-        self.sections += more.filter { !known.contains($0.id) }
+        self.sections += Self.withoutShortcuts(more.filter { !known.contains($0.id) })
     }
 }
 

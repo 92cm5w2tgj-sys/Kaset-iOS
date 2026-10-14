@@ -54,8 +54,6 @@ struct NowPlayingView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var model: NowPlayingModel?
-    @State private var isScrubbing = false
-    @State private var scrubValue: Double = 0
     @State private var isQueuePresented = false
     @State private var isLyricsPresented = false
 
@@ -115,28 +113,7 @@ struct NowPlayingView: View {
     }
 
     private func scrubber(_ state: PlaybackState) -> some View {
-        VStack(spacing: 2) {
-            TimelineView(.periodic(from: .now, by: 0.5)) { context in
-                let position = self.isScrubbing ? self.scrubValue : state.position(at: context.date)
-                VStack(spacing: 2) {
-                    Slider(
-                        value: Binding(get: { position }, set: { self.scrubValue = $0 }),
-                        in: 0 ... max(state.duration, 1)
-                    ) { editing in
-                        self.isScrubbing = editing
-                        if !editing { self.environment.player.seek(to: self.scrubValue) }
-                    }
-                    .disabled(state.duration <= 0)
-                    HStack {
-                        Text(Self.format(position))
-                        Spacer()
-                        Text("-" + Self.format(max(0, state.duration - position)))
-                    }
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
-                }
-            }
-        }
+        ScrubberView(state: state) { self.environment.player.seek(to: $0) }
     }
 
     private func transport(_ state: PlaybackState) -> some View {
@@ -180,6 +157,95 @@ struct NowPlayingView: View {
         }
         .font(.title2)
         .padding(.horizontal, 24)
+    }
+
+    private static func format(_ seconds: TimeInterval) -> String {
+        let total = max(0, Int(seconds))
+        return String(format: "%d:%02d", total / 60, total % 60)
+    }
+}
+
+/// Progress bar with a drag-to-seek gesture. While dragging it shows the finger position;
+/// on release it sends one `seek` command and keeps showing that position until the page
+/// reports a time near it (or a short timeout), so it does not jump back.
+struct ScrubberView: View {
+    let state: PlaybackState
+    let onSeek: (TimeInterval) -> Void
+
+    @State private var dragFraction: Double?
+    @State private var pendingSeek: (target: TimeInterval, until: Date)?
+
+    var body: some View {
+        VStack(spacing: 6) {
+            TimelineView(.periodic(from: .now, by: 0.25)) { context in
+                let duration = max(self.state.duration, 0)
+                let position = self.displayedPosition(at: context.date, duration: duration)
+                let fraction = duration > 0 ? min(max(position / duration, 0), 1) : 0
+
+                VStack(spacing: 6) {
+                    GeometryReader { proxy in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(.quaternary)
+                            Capsule().fill(.primary).frame(width: proxy.size.width * fraction)
+                            Circle()
+                                .fill(.primary)
+                                .frame(width: self.dragFraction == nil ? 10 : 18, height: self.dragFraction == nil ? 10 : 18)
+                                .offset(x: max(0, proxy.size.width * fraction - (self.dragFraction == nil ? 5 : 9)))
+                                .animation(.easeOut(duration: 0.15), value: self.dragFraction == nil)
+                        }
+                        .frame(height: 6)
+                        .frame(maxHeight: .infinity)
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 0)
+                                .onChanged { value in
+                                    guard duration > 0 else { return }
+                                    self.dragFraction = min(max(value.location.x / proxy.size.width, 0), 1)
+                                }
+                                .onEnded { value in
+                                    guard duration > 0 else { return }
+                                    let target = min(max(value.location.x / proxy.size.width, 0), 1) * duration
+                                    self.dragFraction = nil
+                                    self.pendingSeek = (target, Date().addingTimeInterval(3))
+                                    self.onSeek(target)
+                                }
+                        )
+                    }
+                    .frame(height: 28)
+
+                    HStack {
+                        Text(Self.format(position))
+                        Spacer()
+                        Text("-" + Self.format(max(0, duration - position)))
+                    }
+                    .font(.caption.monospacedDigit())
+                    .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .opacity(self.state.duration > 0 ? 1 : 0.5)
+        .accessibilityElement()
+        .accessibilityLabel("Playback position")
+        .accessibilityValue("\(Self.format(self.state.position())) of \(Self.format(self.state.duration))")
+        .accessibilityAdjustableAction { direction in
+            let step: TimeInterval = 10
+            let current = self.state.position()
+            switch direction {
+            case .increment: self.onSeek(min(current + step, self.state.duration))
+            case .decrement: self.onSeek(max(current - step, 0))
+            @unknown default: break
+            }
+        }
+    }
+
+    private func displayedPosition(at date: Date, duration: TimeInterval) -> TimeInterval {
+        if let dragFraction { return dragFraction * duration }
+        let live = self.state.position(at: date)
+        if let pending = self.pendingSeek {
+            // Hold the target until the page catches up with it (within 2 s) or the timeout.
+            if date < pending.until, abs(live - pending.target) > 2 { return pending.target }
+        }
+        return live
     }
 
     private static func format(_ seconds: TimeInterval) -> String {

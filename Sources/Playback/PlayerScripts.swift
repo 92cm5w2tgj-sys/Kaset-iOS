@@ -309,7 +309,16 @@ enum PlayerScripts {
             },
             shuffle: () => { const b = shuffleButton(); if (!b) { return 'missing:shuffle'; } b.click(); return 'clicked'; },
             repeat: () => { const b = repeatButton(); if (!b) { return 'missing:repeat'; } b.click(); return 'clicked'; },
-            seek: (t) => { const m = media(); if (!m) { return 'no-media'; } m.currentTime = t; return 'seek'; }
+            seek: (t) => {
+              const api = playerApi();
+              try {
+                if (api && typeof api.seekTo === 'function') { api.seekTo(t, true); return 'api-seek'; }
+              } catch (e) {}
+              const m = media();
+              if (!m) { return 'no-media'; }
+              m.currentTime = t;
+              return 'media-seek';
+            }
           };
           post({ kind: 'boot', path: location.pathname + location.search.slice(0, 40), vis: realVis() });
         })();
