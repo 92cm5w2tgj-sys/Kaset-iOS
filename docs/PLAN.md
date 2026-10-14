@@ -182,6 +182,10 @@ Spike validated; direction changed to a native app on top of the spike; this pla
 - Segmented Explore · Charts · Moods · New releases, each keeping scroll and state.
 - **Verify (user):** every segment loads, plays, pull to refresh.
 
+> Tap behaviour (from kaset's `ExploreView.playItem`): a **song** plays (with its radio); a
+> **playlist, album or artist opens its page**; playing a playlist/album without opening it is
+> an explicit quick-play button on the cover (and the long-press menu).
+
 ### K8 — Collections and detail screens
 - Library · Liked music · History; playlist / album / artist detail pushed from anywhere
   (play, shuffle, like, share, add to library). Signed-out state.

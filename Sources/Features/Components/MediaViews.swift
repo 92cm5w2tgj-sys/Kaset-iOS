@@ -2,6 +2,8 @@ import SwiftUI
 
 /// Square (or circular) artwork card used in shelves.
 struct MediaCard: View {
+    @Environment(AppEnvironment.self) private var environment
+
     let entity: MediaEntity
     var width: CGFloat = 148
 
@@ -10,6 +12,7 @@ struct MediaCard: View {
             ArtworkView(url: self.entity.thumbnailURL)
                 .frame(width: self.width, height: self.width)
                 .clipShape(self.entity.isCircular ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: 8)))
+                .overlay(alignment: .bottomTrailing) { self.quickPlay }
             Text(self.entity.title)
                 .font(.subheadline.weight(.medium))
                 .lineLimit(1)
@@ -21,6 +24,29 @@ struct MediaCard: View {
             }
         }
         .frame(width: self.width, alignment: .leading)
+    }
+
+    /// Playlists and albums open their page on tap; this plays them without opening it.
+    @ViewBuilder
+    private var quickPlay: some View {
+        switch self.entity.target {
+        case .playlist, .album:
+            Button {
+                Haptics.tap()
+                self.environment.playEntity(self.entity)
+            } label: {
+                Image(systemName: "play.fill")
+                    .font(.footnote.weight(.bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 32, height: 32)
+                    .background(.black.opacity(0.55), in: Circle())
+            }
+            .buttonStyle(.plain)
+            .padding(8)
+            .accessibilityLabel("Play \(self.entity.title)")
+        default:
+            EmptyView()
+        }
     }
 }
 
@@ -55,11 +81,18 @@ struct MediaActions<Content: View>: View {
 
     var body: some View {
         switch self.entity.target {
-        case .song, .playlist:
+        case .song:
             Button(action: self.play) { self.content }
                 .buttonStyle(.plain)
                 .contextMenu { self.menu }
-        case .album, .artist, .mood:
+        case .playlist, .album:
+            // Like the macOS app: the page opens; playing is an explicit action.
+            NavigationLink(value: self.entity) { self.content }
+                .buttonStyle(.plain)
+                .contextMenu {
+                    Button("Play", systemImage: "play.fill") { self.environment.playEntity(self.entity) }
+                }
+        case .artist, .mood:
             NavigationLink(value: self.entity) { self.content }
                 .buttonStyle(.plain)
         case .unsupported:
@@ -72,10 +105,8 @@ struct MediaActions<Content: View>: View {
         switch self.entity.target {
         case let .song(videoId):
             player.play(videoId: videoId, playlistId: "RDAMVM\(videoId)")
-        case let .playlist(id):
-            player.play(videoId: nil, playlistId: MediaEntity.watchPlaylistId(id))
         default:
-            break
+            self.environment.playEntity(self.entity)
         }
     }
 

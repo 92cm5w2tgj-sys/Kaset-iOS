@@ -21,6 +21,28 @@ final class AppEnvironment {
         self.client.brandIdProvider = { AccountSwitcher.storedBrandId }
     }
 
+    /// Plays an entity without opening its page. Playlists use their id as the queue; an album's
+    /// playable `OLAK…` id is only known from its detail, so that is fetched first.
+    func playEntity(_ entity: MediaEntity) {
+        switch entity.target {
+        case let .song(videoId):
+            self.player.play(videoId: videoId, playlistId: "RDAMVM\(videoId)")
+        case let .playlist(id):
+            self.player.play(videoId: nil, playlistId: MediaEntity.watchPlaylistId(id))
+        case let .album(id):
+            Task {
+                guard let detail = try? await self.client.getPlaylist(id: id).detail else { return }
+                if let target = detail.libraryTargetId, !target.isEmpty {
+                    self.player.play(videoId: nil, playlistId: MediaEntity.watchPlaylistId(target))
+                } else if let first = detail.tracks.first(where: \.isPlayable) {
+                    self.player.play(videoId: first.videoId, playlistId: "RDAMVM\(first.videoId)")
+                }
+            }
+        case .artist, .mood, .unsupported:
+            break
+        }
+    }
+
     /// Switches personal/brand identity: web session first, then API scope, then the player.
     func switchAccount(to account: UserAccount) async {
         await self.accountSwitcher.switchSession(to: account)
