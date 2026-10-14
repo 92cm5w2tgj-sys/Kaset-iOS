@@ -31,7 +31,7 @@ enum PlayerScripts {
         dislikeButton: 'dislike-button-view-model button'
     };
     function __kasetPlayerBar() {
-        return document.querySelector('[slot="player-bar"]');
+        return document.querySelector('[slot="player-bar"]') || document.querySelector('ytmusic-player-bar');
     }
     function __kasetPlayerBarElement(name, playerBar = __kasetPlayerBar()) {
         return playerBar ? playerBar.querySelector(__kasetPlayerBarSelectors[name]) : null;

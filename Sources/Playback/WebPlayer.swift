@@ -108,13 +108,15 @@ final class WebPlayer: NSObject {
     // MARK: - Commands (forwarded to the page)
 
     /// Starts a song, optionally inside a playlist/radio so the page owns a real queue.
-    func play(videoId: String, playlistId: String? = nil) {
+    func play(videoId: String?, playlistId: String? = nil) {
+        guard videoId != nil || playlistId != nil else { return }
         var components = URLComponents(string: "https://music.youtube.com/watch")!
-        var items = [URLQueryItem(name: "v", value: videoId)]
+        var items: [URLQueryItem] = []
+        if let videoId { items.append(URLQueryItem(name: "v", value: videoId)) }
         if let playlistId { items.append(URLQueryItem(name: "list", value: playlistId)) }
         components.queryItems = items
         guard let url = components.url else { return }
-        self.log.log("cmd", "load watch v=\(videoId) list=\(playlistId ?? "-")")
+        self.log.log("cmd", "load watch v=\(videoId ?? "-") list=\(playlistId ?? "-")")
         self.webView.load(URLRequest(url: url))
     }
 
@@ -132,11 +134,27 @@ final class WebPlayer: NSObject {
     /// asynchronously in `lastQueueResult`; returns `false` if nothing is playing.
     @discardableResult
     func playNext(videoId: String) -> Bool {
-        guard let source = self.state.videoId else { return false }
+        guard let source = self.state.videoId else {
+            // Nothing is playing: "play next" is just "play".
+            self.play(videoId: videoId, playlistId: "RDAMVM\(videoId)")
+            return true
+        }
         self.queueAttempt += 1
         let script = PlayerScripts.playNext(videoId: videoId, afterVideoId: source, attempt: self.queueAttempt)
         self.log.log("cmd", "playNext \(videoId) after \(source)")
         self.webView.evaluateJavaScript(script, completionHandler: nil)
+        return true
+    }
+
+    /// Appends `videoId` to the end of the page's queue (outcome in `lastQueueResult`).
+    @discardableResult
+    func addToQueue(videoId: String) -> Bool {
+        guard self.state.videoId != nil else {
+            self.play(videoId: videoId, playlistId: "RDAMVM\(videoId)")
+            return true
+        }
+        self.log.log("cmd", "addToQueue \(videoId)")
+        self.webView.evaluateJavaScript(PlayerScripts.addToQueue(videoId: videoId), completionHandler: nil)
         return true
     }
 

@@ -11,12 +11,11 @@ struct MainTabView: View {
     @Namespace private var nowPlayingNamespace
     @State private var selection: Tab = .home
     @State private var isNowPlayingPresented = false
-    @State private var isSettingsPresented = false
 
     var body: some View {
         TabView(selection: self.$selection) {
             SwiftUI.Tab("Home", systemImage: "house", value: Tab.home) {
-                self.screen("Home", systemImage: "house", note: "Home shelves arrive in K6.")
+                HomeView()
             }
             SwiftUI.Tab("Discover", systemImage: "sparkles", value: Tab.discover) {
                 self.screen("Discover", systemImage: "sparkles", note: "Explore, Charts, Moods, New releases arrive in K7.")
@@ -25,7 +24,7 @@ struct MainTabView: View {
                 self.screen("Collections", systemImage: "square.stack", note: "Library, Liked music, History arrive in K8.")
             }
             SwiftUI.Tab("Search", systemImage: "magnifyingglass", value: Tab.search, role: .search) {
-                self.screen("Search", systemImage: "magnifyingglass", note: "Search arrives in K6.")
+                SearchView()
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
@@ -39,9 +38,6 @@ struct MainTabView: View {
             NowPlayingView()
                 .navigationTransition(.zoom(sourceID: "miniPlayer", in: self.nowPlayingNamespace))
         }
-        .sheet(isPresented: self.$isSettingsPresented) {
-            SettingsView()
-        }
     }
 
     /// Placeholder tab content with its own navigation stack and the settings entry point.
@@ -52,13 +48,7 @@ struct MainTabView: View {
                     .padding(.top, 80)
             }
             .navigationTitle(title)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Settings", systemImage: "person.crop.circle") {
-                        self.isSettingsPresented = true
-                    }
-                }
-            }
+            .toolbar { SettingsToolbarButton() }
         }
     }
 }
