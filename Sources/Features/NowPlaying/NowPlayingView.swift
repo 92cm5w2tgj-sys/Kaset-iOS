@@ -239,6 +239,7 @@ struct NowPlayingView: View {
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
+            .neutralMenuTint()
             .accessibilityLabel("More")
         }
     }
@@ -257,6 +258,7 @@ struct NowPlayingView: View {
                     Button(artist.name) { self.artistToShow = artist }
                 }
             } label: { text }
+            .neutralMenuTint()
         } else if state.artist != nil {
             Button {
                 Task {

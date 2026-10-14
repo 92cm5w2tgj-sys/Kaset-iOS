@@ -46,6 +46,7 @@ struct SettingsView: View {
 
                 Section("Diagnostics") {
                     Toggle("Native Now Playing card", isOn: self.$nativeNowPlaying)
+                    Button("Inspect queue (log)") { self.environment.player.inspectQueue() }
                     NavigationLink("Playback debug") { PlaybackDebugView(player: self.environment.player) }
                     NavigationLink("API debug") { APIDebugView(client: self.environment.client, player: self.environment.player) }
                 }

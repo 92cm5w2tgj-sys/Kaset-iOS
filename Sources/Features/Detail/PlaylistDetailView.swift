@@ -146,6 +146,7 @@ struct PlaylistDetailView: View {
                             Task { try? await self.environment.client.removePlaylistFromLibrary(id: detail.libraryTargetId ?? detail.id) }
                         }
                     }
+                    .neutralMenuTint()
                 }
                 if let url = URL(string: "https://music.youtube.com/playlist?list=\(model.watchListId ?? MediaEntity.watchPlaylistId(detail.id))") {
                     ShareLink(item: url)
@@ -216,11 +217,13 @@ struct TrackRow: View {
                         .frame(width: 32, height: 44)
                         .contentShape(Rectangle())
                 }
+                .neutralMenuTint()
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(!self.song.isPlayable)
+        .neutralMenuTint()
         .contextMenu { self.menuItems }
     }
 

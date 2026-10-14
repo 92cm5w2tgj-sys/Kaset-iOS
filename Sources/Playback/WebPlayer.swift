@@ -156,6 +156,17 @@ final class WebPlayer: NSObject {
         }
     }
 
+    /// Dumps what the page's queue component exposes (methods, data keys) into the log, to look
+    /// for a real reorder primitive. Diagnostics only.
+    func inspectQueue() {
+        self.webView.evaluateJavaScript("window.__kaset ? window.__kaset.inspectQueue() : 'no-page'") { [weak self] result, error in
+            Task { @MainActor in
+                let text = (result as? String) ?? error?.localizedDescription ?? "nil"
+                for line in text.split(separator: "\n") { self?.log.log("inspect", String(line)) }
+            }
+        }
+    }
+
     func toggleShuffle() { self.command("shuffle") }
     func cycleRepeat() { self.command("repeat") }
 
@@ -218,12 +229,15 @@ final class WebPlayer: NSObject {
         }
     }
 
-    /// `playNext` that waits for the page's readback, retrying transient menu failures.
-    private func playNextAndWait(videoId: String, after sourceVideoId: String) async -> Bool {
+    /// A queue insertion that waits for the page's readback, retrying transient menu failures.
+    private func insertAndWait(videoId: String, mode: QueueReorderPlan.Mode, after sourceVideoId: String) async -> Bool {
         for attempt in 1 ... 3 {
             self.queueAttempt += 1
             let id = self.queueAttempt
-            let script = PlayerScripts.playNext(videoId: videoId, afterVideoId: sourceVideoId, attempt: id)
+            let script = switch mode {
+            case .front: PlayerScripts.playNext(videoId: videoId, afterVideoId: sourceVideoId, attempt: id)
+            case .end: PlayerScripts.addToQueue(videoId: videoId, attempt: id)
+            }
             let result = await withCheckedContinuation { (continuation: CheckedContinuation<(success: Bool, reason: String), Never>) in
                 self.pendingQueueResults[id] = continuation
                 self.webView.evaluateJavaScript(script, completionHandler: nil)
@@ -233,9 +247,9 @@ final class WebPlayer: NSObject {
                 }
             }
             if result.success { return true }
-            self.log.log("queue", "re-insert \(videoId) attempt \(attempt): \(result.reason)")
+            self.log.log("queue", "insert \(videoId) attempt \(attempt): \(result.reason)")
             guard Self.transientQueueFailures.contains(result.reason) else { return false }
-            try? await Task.sleep(for: .milliseconds(600))
+            try? await Task.sleep(for: .milliseconds(250))
         }
         return false
     }
@@ -250,24 +264,25 @@ final class WebPlayer: NSObject {
         return result == "removed" ? nil : result
     }
 
-    /// Moves an Up Next entry. The page exposes no reorder primitive, so the affected prefix of
-    /// the queue is removed and re-inserted in its new order with "Play next" (which always
-    /// inserts right after the current track). Cost grows with how far down the queue it reaches.
+    /// Moves an Up Next entry. The page exposes no reorder primitive, so the cheaper side of
+    /// Up Next (front or tail, see `QueueReorderPlan`) is removed and re-inserted in its new order.
     ///
     /// - Parameters are positions in the queue snapshot (`state.queue`); `destination` is the
     ///   position the entry must end at.
     func moveQueueEntry(from source: Int, to destination: Int) async {
-        let queue = self.state.queue
         guard !self.isReorderingQueue else { return }
+        let queue = self.state.queue
         guard let current = queue.firstIndex(where: \.isCurrent) else {
             self.log.log("queue", "reorder skipped: the page reports no current queue entry")
             self.postNotice("Couldn't reorder: current track not found in the queue")
             return
         }
         let currentVideoId = queue[current].videoId.isEmpty ? (self.state.videoId ?? "") : queue[current].videoId
-        guard !currentVideoId.isEmpty, source > current, destination > current, source != destination,
-              source < queue.count, destination < queue.count,
-              !queue[(current + 1) ... max(source, destination)].contains(where: { $0.videoId.isEmpty })
+        guard !currentVideoId.isEmpty,
+              let plan = QueueReorderPlan.make(
+                  ids: queue.map(\.videoId), current: current, source: source, destination: destination
+              ),
+              !plan.insertions.contains(where: \.isEmpty)
         else {
             self.log.log("queue", "reorder skipped: source=\(source) dest=\(destination) current=\(current) count=\(queue.count)")
             self.postNotice("Couldn't reorder this entry")
@@ -276,18 +291,10 @@ final class WebPlayer: NSObject {
 
         self.isReorderingQueue = true
         defer { self.isReorderingQueue = false }
-
-        var reordered = queue.map(\.videoId)
-        let moved = reordered.remove(at: source)
-        reordered.insert(moved, at: destination)
-
-        let first = current + 1
-        let last = max(source, destination)
-        let newPrefix = Array(reordered[first ... last])
-        self.log.log("queue", "reorder \(source)→\(destination): rewriting \(newPrefix.count) entries")
+        self.log.log("queue", "reorder \(source)→\(destination): \(plan.mode) · \(plan.operationCount) operations")
 
         // Remove back to front so earlier indices stay valid.
-        for index in stride(from: last, through: first, by: -1) {
+        for index in plan.removeIndices {
             if let reason = await self.removeQueueEntryAndWait(at: index) {
                 self.log.log("queue", "reorder aborted while removing index \(index): \(reason)")
                 self.postNotice("Reorder stopped: couldn't remove an entry (\(reason.prefix(90)))")
@@ -295,9 +302,8 @@ final class WebPlayer: NSObject {
                 return
             }
         }
-        // Insert in reverse: every "play next" lands at the front of Up Next.
-        for videoId in newPrefix.reversed() {
-            guard await self.playNextAndWait(videoId: videoId, after: currentVideoId) else {
+        for videoId in plan.insertions {
+            guard await self.insertAndWait(videoId: videoId, mode: plan.mode, after: currentVideoId) else {
                 self.log.log("queue", "reorder aborted while re-inserting \(videoId)")
                 self.postNotice("Reorder stopped: couldn't re-insert an entry")
                 self.refreshState()
@@ -401,9 +407,14 @@ final class WebPlayer: NSObject {
             if let attempt = message["attemptGeneration"] as? Int,
                let continuation = self.pendingQueueResults.removeValue(forKey: attempt)
             {
+                // Awaited by an internal sequence (reorder): the caller decides about retries
+                // and what the user sees.
                 continuation.resume(returning: (
                     message["success"] as? Bool ?? false, message["reason"] as? String ?? ""
                 ))
+                self.log.log("queue", "\(message["op"] as? String ?? "playNext") \(message["videoId"] as? String ?? "") "
+                    + "success=\(message["success"] as? Bool ?? false) \(message["reason"] as? String ?? "") [awaited]")
+                return
             }
             let id = message["videoId"] as? String ?? ""
             let success = message["success"] as? Bool ?? false

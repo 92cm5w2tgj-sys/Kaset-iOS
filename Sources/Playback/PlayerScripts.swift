@@ -425,6 +425,33 @@ enum PlayerScripts {
                 }
               }, 100);
             }),
+            inspectQueue: () => {
+              const out = [];
+              const interesting = /reorder|move|drag|drop|swap|insert|remove|splice|queue|shuffle|index/i;
+              const names = (o) => {
+                const set = new Set();
+                let p = o;
+                for (let depth = 0; p && depth < 6 && p !== Object.prototype && p !== HTMLElement.prototype; depth += 1) {
+                  Object.getOwnPropertyNames(p).forEach((n) => set.add(n));
+                  p = Object.getPrototypeOf(p);
+                }
+                return Array.from(set).filter((n) => interesting.test(n)).slice(0, 60);
+              };
+              const targets = ['ytmusic-player-queue', 'ytmusic-queue', 'ytmusic-player-page', 'ytmusic-app', 'ytmusic-player-bar'];
+              targets.forEach((tag) => {
+                const el = document.querySelector(tag);
+                out.push(tag + ': ' + (el ? names(el).join(',') : 'absent'));
+              });
+              const item = document.querySelector(QUEUE_ITEMS);
+              if (item) {
+                out.push('item: ' + item.tagName.toLowerCase() + ' attrs=' + Array.from(item.attributes).map((a) => a.name).join(','));
+                out.push('item.methods: ' + names(item).join(','));
+                const d = item.data || item.__data;
+                out.push('item.data keys: ' + (d ? Object.keys(d).join(',') : 'none'));
+                out.push('draggable=' + item.getAttribute('draggable') + ' handle=' + (item.querySelector('.drag-handle, [draggable], #drag-handle') ? 'yes' : 'no'));
+              } else { out.push('no queue item'); }
+              return out.join('\n');
+            },
             shuffle: () => { const b = shuffleButton(); if (!b) { return 'missing:shuffle'; } b.click(); return 'clicked'; },
             repeat: () => { const b = repeatButton(); if (!b) { return 'missing:repeat'; } b.click(); return 'clicked'; },
             seek: (t) => {

@@ -1,5 +1,11 @@
 import SwiftUI
 
+extension View {
+    /// Menus and context menus draw their icons with the tint; the accent colour is for the
+    /// tab bar and primary actions, so menus use the neutral label colour instead.
+    func neutralMenuTint() -> some View { self.tint(.primary) }
+}
+
 /// Square (or circular) artwork card used in shelves.
 struct MediaCard: View {
     @Environment(AppEnvironment.self) private var environment
@@ -94,11 +100,13 @@ struct MediaActions<Content: View>: View {
         case .song:
             Button(action: self.play) { self.content }
                 .buttonStyle(.plain)
+                .neutralMenuTint()
                 .contextMenu { self.menu }
         case .playlist, .album:
             // Like the macOS app: the page opens; playing is an explicit action.
             NavigationLink(value: self.entity) { self.content }
                 .buttonStyle(.plain)
+                .neutralMenuTint()
                 .contextMenu {
                     Button("Play", systemImage: "play.fill") { self.environment.playEntity(self.entity) }
                 }

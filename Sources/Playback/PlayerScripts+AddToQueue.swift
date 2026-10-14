@@ -7,7 +7,7 @@ extension PlayerScripts {
     /// carries a `queueAddEndpoint` item; its target video is substituted for the click and
     /// restored. Here the item is the one inserting at the end of the queue, and success is
     /// confirmed by reading the page's queue model back. Result arrives as `queueResult`.
-    static func addToQueue(videoId: String) -> String {
+    static func addToQueue(videoId: String, attempt: Int = 0) -> String {
         """
         (function(targetVideoId) {
             const bridge = window.webkit && window.webkit.messageHandlers
@@ -27,6 +27,7 @@ extension PlayerScripts {
                     if (bridge) {
                         bridge.postMessage({
                             kind: 'queueResult', op: 'add', videoId: targetVideoId,
+                            attemptGeneration: \(attempt),
                             success: !!success, reason: reason || ''
                         });
                     }
