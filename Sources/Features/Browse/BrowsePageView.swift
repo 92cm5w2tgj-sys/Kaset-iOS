@@ -113,6 +113,22 @@ struct ShelfView: View {
     let title: String
     let entities: [MediaEntity]
 
+    private static let chipMinimumWidth: CGFloat = 92
+    private static let chipSpacing: CGFloat = 10
+    private static let collapsedRows = 3
+
+    @State private var isExpanded = false
+    @State private var gridWidth: CGFloat = 0
+
+    /// How many chips fit on a line, matching what the adaptive grid will lay out.
+    private var columns: Int {
+        guard self.gridWidth > 0 else { return 3 }
+        let fit = Int((self.gridWidth + Self.chipSpacing) / (Self.chipMinimumWidth + Self.chipSpacing))
+        return max(fit, 1)
+    }
+
+    private var collapsedLimit: Int { self.columns * Self.collapsedRows }
+
     private var isMoodGrid: Bool {
         !self.entities.isEmpty && self.entities.allSatisfy {
             if case .mood = $0.target { return true }
@@ -129,8 +145,13 @@ struct ShelfView: View {
                     .accessibilityAddTraits(.isHeader)
             }
             if self.isMoodGrid {
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 10)], spacing: 10) {
-                    ForEach(self.entities) { entity in
+                let canCollapse = self.entities.count > self.collapsedLimit
+                let visible = (self.isExpanded || !canCollapse) ? self.entities : Array(self.entities.prefix(self.collapsedLimit))
+                LazyVGrid(
+                    columns: [GridItem(.adaptive(minimum: Self.chipMinimumWidth), spacing: Self.chipSpacing)],
+                    spacing: Self.chipSpacing
+                ) {
+                    ForEach(visible) { entity in
                         MediaActions(entity: entity) {
                             Text(entity.title)
                                 .font(.subheadline.weight(.semibold))
@@ -144,6 +165,23 @@ struct ShelfView: View {
                     }
                 }
                 .padding(.horizontal, 20)
+                .onGeometryChange(for: CGFloat.self) { $0.size.width - 40 } action: { self.gridWidth = $0 }
+
+                if canCollapse {
+                    Button {
+                        withAnimation(.snappy) { self.isExpanded.toggle() }
+                    } label: {
+                        Label(
+                            self.isExpanded ? "Show less" : "Show all (\(self.entities.count))",
+                            systemImage: self.isExpanded ? "chevron.up" : "chevron.down"
+                        )
+                        .font(.subheadline.weight(.semibold))
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 2)
+                    .accessibilityHint(self.isExpanded ? "Collapses the list" : "Shows every item")
+                }
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     LazyHStack(alignment: .top, spacing: 16) {

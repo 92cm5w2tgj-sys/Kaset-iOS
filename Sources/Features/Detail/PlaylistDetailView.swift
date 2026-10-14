@@ -186,6 +186,16 @@ struct TrackRow: View {
     var showsArtwork = true
     let onPlay: () -> Void
 
+    /// This row is the track the web player is on (not an ad, not another occurrence of a
+    /// different song).
+    private var isCurrent: Bool {
+        self.environment.player.state.videoId == self.song.videoId
+    }
+
+    private var isPlaying: Bool {
+        self.isCurrent && self.environment.player.state.isPlaying
+    }
+
     var body: some View {
         Button(action: self.onPlay) {
             HStack(spacing: 12) {
@@ -193,14 +203,32 @@ struct TrackRow: View {
                     ArtworkView(url: self.song.thumbnailURL)
                         .frame(width: 52, height: 52)
                         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                } else if let index {
-                    Text("\(index)")
-                        .font(.body.monospacedDigit())
-                        .foregroundStyle(.secondary)
-                        .frame(width: 30)
+                        .overlay {
+                            if self.isCurrent {
+                                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                    .fill(.black.opacity(0.45))
+                                EqualizerView(isAnimating: self.isPlaying, color: .white)
+                                    .frame(width: 18, height: 16)
+                            }
+                        }
+                } else {
+                    Group {
+                        if self.isCurrent {
+                            EqualizerView(isAnimating: self.isPlaying)
+                                .frame(width: 18, height: 16)
+                        } else if let index {
+                            Text("\(index)")
+                                .font(.body.monospacedDigit())
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .frame(width: 30)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(self.song.title).font(.body).lineLimit(1)
+                    Text(self.song.title)
+                        .font(.body)
+                        .foregroundStyle(self.isCurrent ? Color.brand : Color.primary)
+                        .lineLimit(1)
                     if !self.song.artistsDisplay.isEmpty {
                         Text(self.song.artistsDisplay).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                     }
