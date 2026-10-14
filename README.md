@@ -126,6 +126,8 @@ xcodebuild test \
 Parser tests run against sanitized fixtures. Never commit cookies, tokens or captured
 personal responses; fixtures use placeholders only.
 
+See the [roadmap](ROADMAP.md) for what is planned next.
+
 ## Known limitations
 
 - Playback depends on selectors and behaviour of the YouTube Music web page. Shuffle/repeat
