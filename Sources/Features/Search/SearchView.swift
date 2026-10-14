@@ -247,6 +247,9 @@ private struct SearchContent: View {
     private var results: some View {
         VStack(spacing: 0) {
             self.scopePicker
+            if self.model.scope != .all {
+                self.scopeTitle
+            }
             switch self.model.current.phase {
             case .idle, .loading:
                 ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -280,6 +283,17 @@ private struct SearchContent: View {
         .pickerStyle(.segmented)
         .padding(.horizontal)
         .padding(.vertical, 8)
+    }
+
+    /// The picker is icon-only, so the selected kind is named right below it.
+    private var scopeTitle: some View {
+        Text(self.model.scope.title)
+            .font(.title2.weight(.bold))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 20)
+            .padding(.top, 6)
+            .padding(.bottom, 4)
+            .accessibilityAddTraits(.isHeader)
     }
 
     private var groupedList: some View {
