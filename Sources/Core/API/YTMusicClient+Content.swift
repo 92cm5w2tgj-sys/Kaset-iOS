@@ -190,4 +190,55 @@ extension YTMusicClient {
         let data = try await self.request("account/accounts_list", body: [:], authPolicy: .required)
         return AccountsListParser.parse(data)
     }
+
+    // MARK: - Playlists the user owns
+
+    /// The user's playlists as offered by "Add to playlist" for one song.
+    func getAddToPlaylistOptions(videoId: String) async throws -> AddToPlaylistMenu {
+        let data = try await self.request(
+            "playlist/get_add_to_playlist", body: ["videoIds": [videoId]], ttl: nil, authPolicy: .required
+        )
+        return PlaylistParser.parseAddToPlaylistMenu(data)
+    }
+
+    /// Creates a playlist, optionally seeded with songs. Returns the new playlist id.
+    func createPlaylist(
+        title: String,
+        description: String? = nil,
+        privacyStatus: PlaylistPrivacyStatus = .private,
+        videoIds: [String] = []
+    ) async throws -> String {
+        var body: [String: Any] = ["title": title, "privacyStatus": privacyStatus.rawValue]
+        if let description, !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            body["description"] = description
+        }
+        if !videoIds.isEmpty { body["videoIds"] = videoIds }
+        let data = try await self.request("playlist/create", body: body, authPolicy: .required)
+        guard let id = PlaylistParser.parseCreatedPlaylistId(data) else {
+            throw YTMusicError.parseError(message: "Missing playlist ID in create playlist response")
+        }
+        self.cache.invalidateMutationCaches()
+        return id
+    }
+
+    func addSongToPlaylist(videoId: String, playlistId: String) async throws {
+        let clean = playlistId.hasPrefix("VL") ? String(playlistId.dropFirst(2)) : playlistId
+        let body: [String: Any] = [
+            "playlistId": clean,
+            "actions": [["action": "ACTION_ADD_VIDEO", "addedVideoId": videoId]],
+        ]
+        _ = try await self.request("browse/edit_playlist", body: body, authPolicy: .required)
+        self.cache.invalidateMutationCaches()
+    }
+
+    /// `setVideoId` identifies the occurrence (a song can be in a playlist more than once).
+    func removeSongFromPlaylist(videoId: String, setVideoId: String, playlistId: String) async throws {
+        let clean = playlistId.hasPrefix("VL") ? String(playlistId.dropFirst(2)) : playlistId
+        let body: [String: Any] = [
+            "playlistId": clean,
+            "actions": [["action": "ACTION_REMOVE_VIDEO", "removedVideoId": videoId, "setVideoId": setVideoId]],
+        ]
+        _ = try await self.request("browse/edit_playlist", body: body, authPolicy: .required)
+        self.cache.invalidateMutationCaches()
+    }
 }

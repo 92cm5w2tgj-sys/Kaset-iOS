@@ -44,6 +44,19 @@ final class PlaylistDetailModel {
         }
     }
 
+    /// Removes one occurrence from a playlist the user owns.
+    func remove(_ song: Song, setVideoId: String) async {
+        guard let detail else { return }
+        do {
+            try await self.client.removeSongFromPlaylist(
+                videoId: song.videoId, setVideoId: setVideoId, playlistId: detail.id
+            )
+            self.tracks.removeAll { $0.playlistSetVideoId == setVideoId }
+        } catch {
+            // Leave the row: the playlist did not change.
+        }
+    }
+
     func loadMoreIfNeeded(after song: Song) async {
         guard self.tracks.last?.id == song.id, let token = self.continuationToken, !self.isLoadingMore else { return }
         self.isLoadingMore = true
@@ -101,6 +114,13 @@ struct PlaylistDetailView: View {
                     ForEach(Array(model.tracks.enumerated()), id: \.element.id) { index, song in
                         TrackRow(song: song, index: index + 1, showsArtwork: model.detail?.isAlbum != true) {
                             self.play(song, model: model)
+                        }
+                        .swipeActions(edge: .trailing) {
+                            if model.detail?.canDelete == true, let setVideoId = song.playlistSetVideoId {
+                                Button("Remove", role: .destructive) {
+                                    Task { await model.remove(song, setVideoId: setVideoId) }
+                                }
+                            }
                         }
                         .task { await model.loadMoreIfNeeded(after: song) }
                     }
@@ -219,6 +239,8 @@ struct TrackRow: View {
     var showsArtwork = true
     let onPlay: () -> Void
 
+    @State private var isAddToPlaylistPresented = false
+
     /// This row is the track the web player is on (not an ad, not another occurrence of a
     /// different song).
     private var isCurrent: Bool {
@@ -286,6 +308,7 @@ struct TrackRow: View {
         .disabled(!self.song.isPlayable)
         .neutralMenuTint()
         .contextMenu { self.menuItems }
+        .addToPlaylistSheet(isPresented: self.$isAddToPlaylistPresented, videoId: self.song.videoId, title: self.song.title)
     }
 
     @ViewBuilder
@@ -293,6 +316,7 @@ struct TrackRow: View {
         Button("Play Next", systemImage: "text.insert") { self.environment.player.playNext(videoId: self.song.videoId) }
         Button("Add to Queue", systemImage: "text.append") { self.environment.player.addToQueue(videoId: self.song.videoId) }
         if self.environment.auth.state == .signedIn {
+            Button("Add to Playlist…", systemImage: "text.badge.plus") { self.isAddToPlaylistPresented = true }
             Button("Like", systemImage: "heart") {
                 Task { try? await self.environment.client.rateSong(videoId: self.song.videoId, rating: .like) }
             }

@@ -105,6 +105,7 @@ struct NowPlayingView: View {
     @State private var isLyricsPresented = false
     @State private var dragOffset: CGFloat = 0
     @State private var artistToShow: Artist?
+    @State private var isAddToPlaylistPresented = false
 
     var body: some View {
         let state = self.environment.player.state
@@ -193,6 +194,10 @@ struct NowPlayingView: View {
             }
         }
         .sheet(isPresented: self.$isQueuePresented) { QueueView() }
+        .addToPlaylistSheet(
+            isPresented: self.$isAddToPlaylistPresented,
+            videoId: state.videoId ?? "", title: state.title
+        )
         .sheet(isPresented: self.$isLyricsPresented) {
             LyricsSheet(model: self.model, videoId: state.videoId)
         }
@@ -228,6 +233,9 @@ struct NowPlayingView: View {
                         ) {
                             Task { await model.toggleLike(videoId: videoId) }
                         }
+                    }
+                    if self.environment.auth.state == .signedIn {
+                        Button("Add to Playlist…", systemImage: "text.badge.plus") { self.isAddToPlaylistPresented = true }
                     }
                     Button("Play Next", systemImage: "text.insert") { self.environment.player.playNext(videoId: videoId) }
                     if let url = URL(string: "https://music.youtube.com/watch?v=\(videoId)") {

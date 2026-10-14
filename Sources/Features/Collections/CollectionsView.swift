@@ -14,6 +14,9 @@ struct CollectionsView: View {
     @Environment(AppEnvironment.self) private var environment
     @State private var selection: Segment = .library
     @State private var history: BrowsePageModel?
+    @State private var isCreatingPlaylist = false
+    @State private var newPlaylistTitle = ""
+    @State private var libraryRefresh = 0
 
     var body: some View {
         NavigationStack {
@@ -28,7 +31,7 @@ struct CollectionsView: View {
                         .padding(.bottom, 8)
 
                         switch self.selection {
-                        case .library: LibraryContentView()
+                        case .library: LibraryContentView().id(self.libraryRefresh)
                         case .liked: LikedMusicView()
                         case .history:
                             if let history = self.history {
@@ -50,7 +53,27 @@ struct CollectionsView: View {
             }
             .navigationTitle("Collections")
             .entityDestinations()
-            .toolbar { SettingsToolbarButton() }
+            .toolbar {
+                if self.environment.auth.state == .signedIn, self.selection == .library {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("New Playlist", systemImage: "plus") { self.isCreatingPlaylist = true }
+                    }
+                }
+                SettingsToolbarButton()
+            }
+            .alert("New Playlist", isPresented: self.$isCreatingPlaylist) {
+                TextField("Title", text: self.$newPlaylistTitle)
+                Button("Create") {
+                    let title = self.newPlaylistTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+                    self.newPlaylistTitle = ""
+                    guard !title.isEmpty else { return }
+                    Task {
+                        _ = try? await self.environment.client.createPlaylist(title: title)
+                        self.libraryRefresh += 1
+                    }
+                }
+                Button("Cancel", role: .cancel) { self.newPlaylistTitle = "" }
+            }
         }
         .task(id: self.selection) {
             guard self.selection == .history, self.environment.auth.state == .signedIn else { return }
