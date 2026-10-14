@@ -114,8 +114,12 @@ final class WebPlayer: NSObject {
     }
 
     /// Rebuilds the web view (e.g. after sign-in so the page picks up the session).
-    func reload() {
+    ///
+    /// Also drops everything that outlives the old page: the system Now Playing entry (lock
+    /// screen / Control Center), its media playback, and optionally the saved session (sign-out).
+    func reload(clearingSession: Bool = false) {
         let old = self.webView
+        Task { await old.pauseAllMediaPlayback() }
         old.stopLoading()
         old.configuration.userContentController.removeScriptMessageHandler(forName: PlayerScripts.bridgeName)
         old.load(URLRequest(url: URL(string: "about:blank")!))
@@ -125,9 +129,16 @@ final class WebPlayer: NSObject {
         self.webView = fresh
         self.generation += 1
         self.state = PlaybackState()
+        self.isShowingRestoredSession = false
         self.lastBeat = nil
+        self.lastEvent = ""
+        self.nowPlaying.clear()
+        MPNowPlayingInfoCenter.default().playbackState = .stopped
+        if clearingSession {
+            UserDefaults.standard.removeObject(forKey: Self.savedSessionKey)
+        }
         fresh.load(URLRequest(url: Self.homeURL))
-        self.log.log("web", "reloaded")
+        self.log.log("web", "reloaded (clearingSession=\(clearingSession))")
     }
 
     // MARK: - Commands (forwarded to the page)

@@ -34,7 +34,7 @@ carried over and the player was rebuilt for iOS.
     <td align="center"><img src="docs/screenshots/now-playing.png" alt="Now Playing" width="260"></td>
   </tr>
   <tr>
-    <td align="center"><sub><b>Home</b><br>Shelves, tab bar and mini player</sub></td>
+    <td align="center"><sub><b>Home</b><br>Shelves, tab bar and mini player (guest mode)</sub></td>
     <td align="center"><sub><b>Discover</b><br>Explore, Charts, Moods, New releases</sub></td>
     <td align="center"><sub><b>Now Playing</b><br>Artwork-tinted, Apple Music layout</sub></td>
   </tr>

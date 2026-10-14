@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// Timestamped log that is mirrored to `Documents/spike-log.txt` and flushed on every line,
 /// so it survives the app being killed in the background.
@@ -27,6 +28,9 @@ final class SpikeLog: ObservableObject {
     }
 
     func log(_ category: String, _ message: String) {
+        // Mirrored to the unified log so lines show up in Xcode's console (filter by subsystem
+        // `dev.emoona.kaset`, or search `[queue]`, `[inspect]`) as well as in the in-app log.
+        Logger(subsystem: "dev.emoona.kaset", category: category).notice("[\(category)] \(message, privacy: .public)")
         let line = "\(self.formatter.string(from: Date())) [\(category)] \(message)"
         self.lines.append(line)
         if self.lines.count > 400 {

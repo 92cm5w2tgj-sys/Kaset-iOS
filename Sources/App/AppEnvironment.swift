@@ -83,6 +83,6 @@ final class AppEnvironment {
         UserDefaults.standard.removeObject(forKey: AccountSwitcher.brandIdKey)
         self.accountAvatarURL = nil
         self.client.resetSessionState()
-        self.player.reload()
+        self.player.reload(clearingSession: true)
     }
 }
