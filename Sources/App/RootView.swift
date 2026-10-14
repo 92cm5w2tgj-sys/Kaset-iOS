@@ -13,6 +13,7 @@ struct RootView: View {
                 .font(.system(size: 48))
             Text("Kaset")
                 .font(.largeTitle.bold())
+            self.accountRow
             Button("Debug lab") { environment.isLabPresented = true }
                 .buttonStyle(.borderedProminent)
         }
@@ -26,6 +27,10 @@ struct RootView: View {
                     .allowsHitTesting(false)
             }
         }
+        .task { await environment.start() }
+        .sheet(isPresented: $environment.isLoginPresented) {
+            LoginView { Task { await environment.loginFinished() } }
+        }
         .fullScreenCover(isPresented: $environment.isLabPresented) {
             DebugLabView(model: environment.lab)
                 .overlay(alignment: .topTrailing) {
@@ -33,6 +38,23 @@ struct RootView: View {
                         .font(.footnote)
                         .padding(8)
                 }
+        }
+    }
+
+    @ViewBuilder
+    private var accountRow: some View {
+        switch self.environment.auth.state {
+        case .unknown:
+            ProgressView()
+        case .signedOut:
+            Button("Se connecter") { self.environment.isLoginPresented = true }
+        case .signedIn:
+            VStack(spacing: 4) {
+                Label("Connecté", systemImage: "checkmark.seal.fill")
+                Button("Se déconnecter", role: .destructive) {
+                    Task { await self.environment.signOut() }
+                }
+            }
         }
     }
 }
