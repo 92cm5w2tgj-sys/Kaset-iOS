@@ -9,7 +9,6 @@ final class AppEnvironment {
     let player: WebPlayer
 
     var isPlaybackDebugPresented = false
-    var isAPIDebugPresented = false
     var isLoginPresented = false
 
     init() {
