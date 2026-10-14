@@ -36,7 +36,7 @@ Reference app: `~/Desktop/Developer/kaset` (see *Reference* in the plan)
 | ID | Step | Status | Commit | Confirmed |
 |---|---|---|---|---|
 | K0 | Plan, decisions | ✅ | (this commit) | 2026-10-14 |
-| K1 | Foundations | ⬜ | | |
+| K1 | Foundations | 🟦 | 70f5a43 | |
 | K2 | Auth | ⬜ | | |
 | K3 | Core API | ⬜ | | |
 | K4 | Playback engine | ⬜ | | |
@@ -66,3 +66,4 @@ Reference app: `~/Desktop/Developer/kaset` (see *Reference* in the plan)
 | Date | Step | Note |
 |---|---|---|
 | 2026-10-14 | K0 | Direction changed: the spike becomes the app (`Kaset-iOS`, renamed from `YoutubeMusic Spik`). Plan and tracker moved here and re-planned (K1–K12) with the already-decided UI. kaset `feat/ios-port` frozen as reference (S1 ✅, S2 ✅, S3–S5 🟦 never confirmed). |
+| 2026-10-14 | K1 | Project renamed `KasetiOS` (bundle `dev.emoona.kaset`, iOS 26, Swift 6 builds clean), `App/` + `Debug/` layout, `AppEnvironment` owns the lab player (hidden 1×1 host while the lab is closed), test target green on iPhone 17 simulator (iOS 26.2). Awaiting device verification. |
