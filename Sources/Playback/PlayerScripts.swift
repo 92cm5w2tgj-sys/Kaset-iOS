@@ -450,7 +450,7 @@ enum PlayerScripts {
                 out.push('item.data keys: ' + (d ? Object.keys(d).join(',') : 'none'));
                 out.push('draggable=' + item.getAttribute('draggable') + ' handle=' + (item.querySelector('.drag-handle, [draggable], #drag-handle') ? 'yes' : 'no'));
               } else { out.push('no queue item'); }
-              return out.join('\n');
+              return out.join('\\n');
             },
             shuffle: () => { const b = shuffleButton(); if (!b) { return 'missing:shuffle'; } b.click(); return 'clicked'; },
             repeat: () => { const b = repeatButton(); if (!b) { return 'missing:repeat'; } b.click(); return 'clicked'; },
