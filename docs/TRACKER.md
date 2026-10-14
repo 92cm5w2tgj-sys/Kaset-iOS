@@ -39,7 +39,7 @@ Reference app: `~/Desktop/Developer/kaset` (see *Reference* in the plan)
 | K1 | Foundations | ✅ | 70f5a43 | 2026-10-14 |
 | K2 | Auth | ✅ | aa7d884 | 2026-10-14 |
 | K3 | Core API | ✅ | e3e5f3b | 2026-10-14 |
-| K4 | Playback engine | ⬜ | | |
+| K4 | Playback engine | 🟦 | 087f867 | |
 | K5 | App shell | ⬜ | | |
 | K6 | Home and Search | ⬜ | | |
 | K7 | Discover | ⬜ | | |
@@ -70,3 +70,4 @@ Reference app: `~/Desktop/Developer/kaset` (see *Reference* in the plan)
 | 2026-10-14 | K2 | `Auth/`: `AuthCookies` (allowlist, SAPISID selection, `SAPISIDHASH`, plist archive), `CookieVault` (Keychain AfterFirstUnlockThisDeviceOnly), `AuthStore` (restore at launch, debounced re-archive on cookie change, sign-out wipes vault + jar + website data), `LoginView`. Kaset's restore-policy/transaction machinery deliberately not copied (single blob). Root view has a sign in/out row. 11 tests green. Awaiting device verification (K1 + K2). |
 | 2026-10-14 | K3 | `Core/`: models + Home/Search/Suggestions parsers copied from kaset (type names kept), `YTMusicClient` trimmed to browse pages (+continuations), search (+continuation), suggestions; auth via `AuthStore` (SAPISIDHASH, 401/403 → `authExpired` + `sessionExpired()`); API key resolved from the page. Checkpoint: kaset's Home/Search/Suggestions/ParsingHelpers/ResponseTreeSearch tests + fixtures ported, 119 tests green. `Debug/APIDebugView` shows live Home + Search. Not run against the live API yet (needs the device session). |
 | 2026-10-14 | K1–K3 | Confirmed on device by the user. Next: K4 (playback engine). |
+| 2026-10-14 | K4 | `Playback/`: `WebPlayer` (hidden 1×1 desktop-mode web view, commands go to the page, `PlaybackState` mirrors page events + 2 s/5 s heartbeat incl. queue snapshot), `PlayerScripts` (spike keep-alive + statechange/visibilitychange resume, Media Session next/previous, kaset play-next injection), `NowPlayingPublisher` (toggle `nativeNowPlaying`, default on), audio session + interruptions, diagnostics log. Spike lab retired. JS syntax checked with node; reducer tests green (126). **Not measured on device**: native vs page Now Playing card comparison and the 5-point background matrix are the user's verification. |
