@@ -64,8 +64,9 @@ struct ArtistDetailView: View {
                 ProgressView()
             }
         }
-        .navigationTitle(self.fallbackName)
+        .navigationTitle(self.model?.detail?.artist.name ?? self.fallbackName)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar { self.artistToolbar }
         .task {
             if self.model == nil { self.model = ArtistDetailModel(id: self.id, client: self.environment.client) }
             if self.model?.detail == nil { await self.model?.load() }
@@ -111,53 +112,60 @@ struct ArtistDetailView: View {
     }
 
     private func header(_ detail: ArtistDetail, model: ArtistDetailModel) -> some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 14) {
             ArtworkView(url: detail.thumbnailURL ?? detail.artist.thumbnailURL)
                 .frame(width: 200, height: 200)
                 .clipShape(Circle())
                 .shadow(color: .black.opacity(0.25), radius: 16, y: 8)
                 .padding(.top, 8)
-            Text(detail.profileKind == .profile ? "PROFILE" : "ARTIST")
-                .font(.caption.weight(.semibold))
+
+            // The name lives in the navigation bar only; this is the secondary line.
+            Text([detail.profileKind == .profile ? "Profile" : "Artist", detail.monthlyAudience]
+                .compactMap { $0 }.joined(separator: " · "))
+                .font(.footnote)
                 .foregroundStyle(.secondary)
-                .tracking(1)
-            Text(detail.artist.name)
-                .font(.largeTitle.weight(.bold))
                 .multilineTextAlignment(.center)
-            if let audience = detail.monthlyAudience {
-                Text(audience).font(.subheadline).foregroundStyle(.secondary)
-            }
-            HStack(spacing: 10) {
-                if detail.profileKind == .artist, let seed = detail.mixPlaylistId ?? detail.songs.first.map({ "RDAMVM\($0.videoId)" }) {
+
+            HStack(spacing: 12) {
+                if detail.profileKind == .artist,
+                   let seed = detail.mixPlaylistId ?? detail.songs.first.map({ "RDAMVM\($0.videoId)" })
+                {
                     Button {
                         self.environment.player.playShuffled(videoId: nil, playlistId: seed)
                     } label: {
-                        Label("Shuffle", systemImage: "shuffle").frame(maxWidth: .infinity)
+                        Label("Shuffle", systemImage: "shuffle")
                     }
-                    .buttonStyle(TintedActionButtonStyle())
+                    .buttonStyle(PrimaryActionButtonStyle())
                 }
                 if let mix = detail.mixPlaylistId {
                     Button {
                         self.environment.player.play(videoId: detail.mixVideoId, playlistId: mix)
                     } label: {
-                        Label("Mix", systemImage: "play.circle").frame(maxWidth: .infinity)
+                        Label("Mix", systemImage: "play.circle")
                     }
-                    .buttonStyle(TintedActionButtonStyle())
+                    .buttonStyle(SecondaryActionButtonStyle())
                 }
             }
-            if detail.channelId != nil, self.environment.auth.state == .signedIn {
+        }
+        .padding(.horizontal, 20)
+    }
+
+    /// Follow lives in the navigation bar.
+    @ToolbarContentBuilder
+    private var artistToolbar: some ToolbarContent {
+        if let model = self.model, let detail = model.detail,
+           detail.channelId != nil, self.environment.auth.state == .signedIn
+        {
+            ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     Task { await model.toggleSubscription() }
                 } label: {
                     Text(model.isSubscribed
                         ? (detail.subscribedButtonText ?? "Following")
                         : (detail.unsubscribedButtonText ?? "Follow"))
-                        .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(TintedActionButtonStyle())
             }
         }
-        .padding(.horizontal, 20)
     }
 
     @ViewBuilder

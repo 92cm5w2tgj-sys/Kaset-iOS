@@ -75,8 +75,9 @@ struct PlaylistDetailView: View {
                 ProgressView()
             }
         }
-        .navigationTitle(self.fallbackTitle)
+        .navigationTitle(self.model?.detail?.title ?? self.fallbackTitle)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar { self.detailToolbar }
         .task {
             if self.model == nil { self.model = PlaylistDetailModel(id: self.id, client: self.environment.client) }
             if self.model?.detail == nil { await self.model?.load() }
@@ -112,33 +113,47 @@ struct PlaylistDetailView: View {
     }
 
     private func header(_ detail: PlaylistDetail, model: PlaylistDetailModel) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
             ArtworkView(url: detail.thumbnailURL ?? self.thumbnailURL)
                 .frame(width: 250, height: 250)
                 .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                 .shadow(color: .black.opacity(0.25), radius: 18, y: 10)
                 .padding(.top, 8)
-            VStack(spacing: 4) {
-                Text(detail.title)
-                    .font(.title2.weight(.bold))
-                    .multilineTextAlignment(.center)
-                if let author = detail.author?.name {
-                    Text(author).font(.title3).foregroundStyle(.tint)
-                }
-                Text(detail.trackCountDisplay).font(.footnote).foregroundStyle(.secondary)
-            }
+
+            // The title lives in the navigation bar only; this is just the byline.
+            Text(Self.byline(for: detail))
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
             HStack(spacing: 12) {
                 Button { self.playAll(model: model, shuffled: false) } label: {
-                    Label("Play", systemImage: "play.fill").frame(maxWidth: .infinity)
+                    Label("Play", systemImage: "play.fill")
                 }
+                .buttonStyle(PrimaryActionButtonStyle())
                 Button { self.playAll(model: model, shuffled: true) } label: {
-                    Label("Shuffle", systemImage: "shuffle").frame(maxWidth: .infinity)
+                    Label("Shuffle", systemImage: "shuffle")
                 }
+                .buttonStyle(SecondaryActionButtonStyle())
             }
-            .buttonStyle(TintedActionButtonStyle())
-            HStack(spacing: 24) {
-                if detail.supportsLibraryToggle {
-                    Menu("Library", systemImage: "plus") {
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private static func byline(for detail: PlaylistDetail) -> String {
+        let author = detail.author?.name
+            .replacingOccurrences(of: "Playlist • ", with: "")
+            .trimmingCharacters(in: .whitespaces)
+        return [author, detail.trackCountDisplay].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+    }
+
+    /// Library and share live in the navigation bar, like the system apps.
+    @ToolbarContentBuilder
+    private var detailToolbar: some ToolbarContent {
+        if let detail = self.model?.detail {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    if detail.supportsLibraryToggle {
                         Button("Add to Library", systemImage: "plus") {
                             Task { try? await self.environment.client.addPlaylistToLibrary(id: detail.libraryTargetId ?? detail.id) }
                         }
@@ -146,15 +161,16 @@ struct PlaylistDetailView: View {
                             Task { try? await self.environment.client.removePlaylistFromLibrary(id: detail.libraryTargetId ?? detail.id) }
                         }
                     }
-                    .neutralMenuTint()
+                    if let url = URL(string: "https://music.youtube.com/playlist?list=\(self.model?.watchListId ?? MediaEntity.watchPlaylistId(detail.id))") {
+                        ShareLink(item: url) { Label("Share", systemImage: "square.and.arrow.up") }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis")
                 }
-                if let url = URL(string: "https://music.youtube.com/playlist?list=\(model.watchListId ?? MediaEntity.watchPlaylistId(detail.id))") {
-                    ShareLink(item: url)
-                }
+                .neutralMenuTint()
+                .accessibilityLabel("More")
             }
-            .font(.subheadline)
         }
-        .frame(maxWidth: .infinity)
     }
 
     private func playAll(model: PlaylistDetailModel, shuffled: Bool) {
@@ -269,18 +285,5 @@ struct TrackRow: View {
     private static func format(_ seconds: TimeInterval) -> String {
         let total = Int(seconds)
         return String(format: "%d:%02d", total / 60, total % 60)
-    }
-}
-
-/// Apple Music-style secondary action: tinted fill, tint label.
-struct TintedActionButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .font(.headline)
-            .foregroundStyle(.tint)
-            .padding(.vertical, 14)
-            .background(.tint.opacity(configuration.isPressed ? 0.25 : 0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-            .scaleEffect(configuration.isPressed ? 0.98 : 1)
-            .animation(.spring(duration: 0.2), value: configuration.isPressed)
     }
 }

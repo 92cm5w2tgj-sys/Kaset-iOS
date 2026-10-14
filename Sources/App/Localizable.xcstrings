@@ -1,1006 +1,1014 @@
 {
-  "sourceLanguage": "en",
-  "strings": {
-    "%@": {},
-    "%@ · %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@ · %2$@"
+  "sourceLanguage" : "en",
+  "strings" : {
+    "%@" : {
+
+    },
+    "%@ · %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ · %2$@"
           }
         }
       }
     },
-    "%@ %@ %@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@ %2$@ %3$@"
+    "%@ %@ %@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@ %3$@"
           }
         }
       }
     },
-    "%@ %@/%@s · vis=%@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "%1$@ %2$@/%3$@s · vis=%4$@"
+    "%@ %@/%@s · vis=%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "%1$@ %2$@/%3$@s · vis=%4$@"
           }
         }
       }
     },
-    "About": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "À propos"
+    "About" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À propos"
           }
         }
       }
     },
-    "Account": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Compte"
+    "Account" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Compte"
           }
         }
       }
     },
-    "Add to Library": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ajouter à la bibliothèque"
+    "Add to Library" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter à la bibliothèque"
           }
         }
       }
     },
-    "Add to Queue": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ajouter à la file"
+    "Add to Queue" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajouter à la file"
           }
         }
       }
     },
-    "Advertisement": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Publicité"
+    "Advertisement" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Publicité"
           }
         }
       }
     },
-    "Albums": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Albums"
+    "Albums" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Albums"
           }
         }
       }
     },
-    "Artists": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Artistes"
+    "Artists" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Artistes"
           }
         }
       }
     },
-    "Audio quality": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Qualité audio"
+    "Audio quality" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Qualité audio"
           }
         }
       }
     },
-    "Auto": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Auto"
+    "Auto" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Auto"
           }
         }
       }
     },
-    "Changes the language of titles and shelves returned by YouTube Music.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Change la langue des titres et des sections renvoyés par YouTube Music."
+    "Changes the language of titles and shelves returned by YouTube Music." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Change la langue des titres et des sections renvoyés par YouTube Music."
           }
         }
       }
     },
-    "Charts": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Classements"
+    "Charts" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Classements"
           }
         }
       }
     },
-    "Close": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Fermer"
+    "Close" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Fermer"
           }
         }
       }
     },
-    "Collections": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Collections"
+    "Collections" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Collections"
           }
         }
       }
     },
-    "Content language": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Langue du contenu"
+    "Content language" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Langue du contenu"
           }
         }
       }
     },
-    "Couldn't load": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Chargement impossible"
+    "Couldn't load" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Chargement impossible"
           }
         }
       }
     },
-    "Dernier message de la page : %@\n%@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "Dernier message de la page : %1$@\n%2$@"
+    "Dernier message de la page : %@\n%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "Dernier message de la page : %1$@\n%2$@"
           }
         }
       }
     },
-    "Diagnostics": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Diagnostic"
+    "Diagnostics" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Diagnostic"
           }
         }
       }
     },
-    "Discover": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Découvrir"
+    "Discover" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Découvrir"
           }
         }
       }
     },
-    "Done": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "OK"
+    "Done" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "OK"
           }
         }
       }
     },
-    "Explore": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Explorer"
+    "Explore" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Explorer"
           }
         }
       }
     },
-    "Fans might also like": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Les fans aiment aussi"
+    "Fans might also like" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Les fans aiment aussi"
           }
         }
       }
     },
-    "Follow": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Suivre"
+    "Follow" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suivre"
           }
         }
       }
     },
-    "Following": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Suivi"
+    "Following" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suivi"
           }
         }
       }
     },
-    "Haptic feedback": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Retour haptique"
+    "Haptic feedback" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retour haptique"
           }
         }
       }
     },
-    "High": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Haute"
+    "High" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Haute"
           }
         }
       }
     },
-    "History": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Historique"
+    "History" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Historique"
           }
         }
       }
     },
-    "Home": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Accueil"
+    "Home" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Accueil"
           }
         }
       }
     },
-    "id=%@ next=%@ prev=%@": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "new",
-            "value": "id=%1$@ next=%2$@ prev=%3$@"
+    "id=%@ next=%@ prev=%@" : {
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "new",
+            "value" : "id=%1$@ next=%2$@ prev=%3$@"
           }
         }
       }
     },
-    "Less": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Moins"
+    "Less" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Moins"
           }
         }
       }
     },
-    "Library": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bibliothèque"
+    "Library" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Bibliothèque"
           }
         }
       }
     },
-    "Like": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "J'aime"
+    "Like" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "J'aime"
           }
         }
       }
     },
-    "Liked music": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Titres likés"
+    "Liked music" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titres likés"
           }
         }
       }
     },
-    "Log": {},
-    "Low": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Basse"
+    "Log" : {
+
+    },
+    "Low" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Basse"
           }
         }
       }
     },
-    "Lyrics": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Paroles"
+    "Lyrics" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Paroles"
           }
         }
       }
     },
-    "Mix": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mix"
+    "Mix" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mix"
           }
         }
       }
     },
-    "Moods": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ambiances"
+    "Moods" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ambiances"
           }
         }
       }
     },
-    "More": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Plus"
+    "More" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Plus"
           }
         }
       }
     },
-    "Native Now Playing card": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Carte « En lecture » native"
+    "Native Now Playing card" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Carte « En lecture » native"
           }
         }
       }
     },
-    "New": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nouveautés"
+    "New" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveautés"
           }
         }
       }
     },
-    "Next": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Suivant"
+    "Next" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suivant"
           }
         }
       }
     },
-    "No liked songs yet": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucun titre liké pour l'instant"
+    "No liked songs yet" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun titre liké pour l'instant"
           }
         }
       }
     },
-    "No lyrics": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pas de paroles"
+    "No lyrics" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas de paroles"
           }
         }
       }
     },
-    "No recommendations yet.": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pas encore de recommandations."
+    "No recommendations yet." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pas encore de recommandations."
           }
         }
       }
     },
-    "Normal": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Normale"
+    "Normal" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Normale"
           }
         }
       }
     },
-    "Not playing": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aucune lecture"
+    "Not playing" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucune lecture"
           }
         }
       }
     },
-    "Nothing here yet.": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rien ici pour l'instant."
+    "Nothing here yet." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien ici pour l'instant."
           }
         }
       }
     },
-    "Nothing played yet.": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rien n'a encore été écouté."
+    "Nothing played yet." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rien n'a encore été écouté."
           }
         }
       }
     },
-    "Now Playing": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "En cours de lecture"
+    "Now Playing" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "En cours de lecture"
           }
         }
       }
     },
-    "Opens the artist page": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ouvre la page de l'artiste"
+    "Opens the artist page" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ouvre la page de l'artiste"
           }
         }
       }
     },
-    "Pause": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pause"
+    "Pause" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Pause"
           }
         }
       }
     },
-    "Play": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lire"
+    "Play" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lire"
           }
         }
       }
     },
-    "Play Next": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lire ensuite"
+    "Play Next" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lire ensuite"
           }
         }
       }
     },
-    "Play something to see what's next.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lance un titre pour voir la suite."
+    "Play something to see what's next." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lance un titre pour voir la suite."
           }
         }
       }
     },
-    "Playback": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lecture"
+    "Playback" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lecture"
           }
         }
       }
     },
-    "Playlists": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Playlists"
+    "Playlists" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Playlists"
           }
         }
       }
     },
-    "Previous": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Précédent"
+    "Previous" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Précédent"
           }
         }
       }
     },
-    "Queue": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "File d'attente"
+    "Queue" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "File d'attente"
           }
         }
       }
     },
-    "Queue is empty": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "La file d'attente est vide"
+    "Queue is empty" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La file d'attente est vide"
           }
         }
       }
     },
-    "Radio": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Radio"
+    "Radio" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Radio"
           }
         }
       }
     },
-    "Remove": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Retirer"
+    "Remove" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retirer"
           }
         }
       }
     },
-    "Remove from Library": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Retirer de la bibliothèque"
+    "Remove from Library" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retirer de la bibliothèque"
           }
         }
       }
+    },
+    "Reordering…" : {
+
     },
-    "Reordering…": {},
-    "Repeat": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Répéter"
+    "Repeat" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Répéter"
           }
         }
       }
     },
-    "Search": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Recherche"
+    "Search" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Recherche"
           }
         }
       }
     },
-    "Search YouTube Music": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Rechercher sur YouTube Music"
+    "Search YouTube Music" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechercher sur YouTube Music"
           }
         }
       }
     },
-    "Section": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Section"
+    "Section" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Section"
           }
         }
       }
     },
-    "See all": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tout afficher"
+    "See all" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout afficher"
           }
         }
       }
     },
-    "Settings": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Réglages"
+    "Settings" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réglages"
           }
         }
       }
     },
-    "Shuffle": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aléatoire"
+    "Show all (%lld)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tout afficher (%lld)"
           }
         }
       }
     },
-    "Sign in": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Se connecter"
+    "Show less" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Afficher moins"
           }
         }
       }
     },
-    "Sign in to see your library, liked songs and history.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connecte-toi pour voir ta bibliothèque, tes titres likés et ton historique."
+    "Shuffle" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aléatoire"
           }
         }
       }
     },
-    "Sign in with your Google account to play your music.": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connecte-toi avec ton compte Google pour écouter ta musique."
+    "Sign in" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se connecter"
           }
         }
       }
     },
-    "Sign out": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Se déconnecter"
+    "Sign in to see your library, liked songs and history." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecte-toi pour voir ta bibliothèque, tes titres likés et ton historique."
           }
         }
       }
     },
-    "Signed in": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Connecté"
+    "Sign in with your Google account to play your music." : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecte-toi avec ton compte Google pour écouter ta musique."
           }
         }
       }
     },
-    "Singles & EPs": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Singles et EP"
+    "Sign out" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Se déconnecter"
           }
         }
       }
     },
-    "Skip ads automatically": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Passer les pubs automatiquement"
+    "Signed in" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Connecté"
           }
         }
       }
     },
-    "Skipping ads is an opt-in and may go against YouTube's terms of service.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Passer les publicités est une option à activer et peut aller à l'encontre des conditions d'utilisation de YouTube."
+    "Singles & EPs" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Singles et EP"
           }
         }
       }
     },
-    "Songs": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Titres"
+    "Skip ads automatically" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passer les pubs automatiquement"
           }
         }
       }
     },
-    "Songs, albums, artists": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Titres, albums, artistes"
+    "Skipping ads is an opt-in and may go against YouTube's terms of service." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Passer les publicités est une option à activer et peut aller à l'encontre des conditions d'utilisation de YouTube."
           }
         }
       }
     },
-    "Songs, albums, artists and playlists.": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Titres, albums, artistes et playlists."
+    "Songs" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titres"
           }
         }
       }
     },
-    "System": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Système"
+    "Songs, albums, artists" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titres, albums, artistes"
           }
         }
       }
     },
-    "Top songs": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Titres populaires"
+    "Songs, albums, artists and playlists." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titres, albums, artistes et playlists."
           }
         }
       }
     },
-    "Try Again": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Réessayer"
+    "System" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Système"
           }
         }
       }
     },
-    "Unlike": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Retirer le j'aime"
+    "Top songs" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Titres populaires"
           }
         }
       }
     },
-    "Up Next": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "À suivre"
+    "Try Again" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Réessayer"
           }
         }
       }
     },
-    "Videos": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vidéos"
+    "Unlike" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retirer le j'aime"
           }
         }
       }
     },
-    "Your library is empty": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ta bibliothèque est vide"
+    "Up Next" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "À suivre"
           }
         }
       }
     },
-    "Your music": {
-      "extractionState": "stale",
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ta musique"
+    "Videos" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Vidéos"
           }
         }
       }
     },
-    "Show less": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Afficher moins"
+    "Your library is empty" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ta bibliothèque est vide"
           }
         }
       }
     },
-    "Show all (%lld)": {
-      "localizations": {
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tout afficher (%lld)"
+    "Your music" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ta musique"
           }
         }
       }
     }
   },
-  "version": "1.0"
+  "version" : "1.0"
 }
