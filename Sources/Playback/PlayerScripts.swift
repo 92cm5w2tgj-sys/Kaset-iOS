@@ -139,6 +139,22 @@ enum PlayerScripts {
             });
           };
 
+          // Shuffle / repeat live on the player bar. Selectors and attributes are best effort.
+          const barEl = () => document.querySelector('ytmusic-player-bar');
+          const shuffleButton = () => { const b = barEl(); return b ? b.querySelector('.shuffle') : null; };
+          const repeatButton = () => { const b = barEl(); return b ? b.querySelector('.repeat') : null; };
+          const shuffleOn = () => {
+            const b = shuffleButton();
+            if (!b) { return null; }
+            return b.getAttribute('aria-pressed') === 'true' || b.hasAttribute('active') || b.classList.contains('active');
+          };
+          const repeatMode = () => {
+            const b = barEl();
+            const raw = b ? (b.getAttribute('repeat-mode_') || b.getAttribute('repeat-mode') || '') : '';
+            const v = raw.toUpperCase();
+            return v === 'ALL' ? 'all' : (v === 'ONE' ? 'one' : 'off');
+          };
+
           let lastQueueKey = '';
           const state = (ev, withQueue) => {
             const m = media();
@@ -150,8 +166,10 @@ enum PlayerScripts {
               currentTime: m ? Math.round(m.currentTime * 10) / 10 : null,
               duration: (m && isFinite(m.duration)) ? Math.round(m.duration * 10) / 10 : null,
               videoId: videoId(),
+              listId: new URLSearchParams(location.search).get('list'),
               title: meta.title, artist: meta.artist, album: meta.album, artwork: meta.artwork,
               canNext: enabled('next'), canPrevious: enabled('previous'),
+              shuffle: shuffleOn(), repeat: repeatMode(),
               vis: realVis()
             };
             if (withQueue) {
@@ -263,6 +281,34 @@ enum PlayerScripts {
             toggle: () => click('playPause'),
             next: () => click('next'),
             previous: () => click('previous'),
+            // Queue editing goes through the page's own queue items (selectors best effort).
+            playQueueIndex: (i) => {
+              const items = Array.from(document.querySelectorAll('ytmusic-player-queue-item'));
+              const el = items[i];
+              if (!el) { return 'missing:queue-item'; }
+              const play = el.querySelector('ytmusic-play-button-renderer') || el;
+              play.click();
+              return 'clicked';
+            },
+            removeQueueIndex: (i) => {
+              const items = Array.from(document.querySelectorAll('ytmusic-player-queue-item'));
+              const el = items[i];
+              if (!el) { return 'missing:queue-item'; }
+              const menuButton = el.querySelector('ytmusic-menu-renderer button, ytmusic-menu-renderer tp-yt-paper-icon-button');
+              if (!menuButton) { return 'missing:menu'; }
+              menuButton.click();
+              let tries = 0;
+              const timer = setInterval(() => {
+                tries += 1;
+                const entries = Array.from(document.querySelectorAll('ytmusic-menu-popup-renderer ytmusic-menu-service-item-renderer'));
+                const target = entries.find((e) => /remove from queue|retirer de la file|remove/i.test(e.textContent || ''));
+                if (target) { clearInterval(timer); target.click(); return; }
+                if (tries > 20) { clearInterval(timer); document.body.click(); }
+              }, 100);
+              return 'menu-opened';
+            },
+            shuffle: () => { const b = shuffleButton(); if (!b) { return 'missing:shuffle'; } b.click(); return 'clicked'; },
+            repeat: () => { const b = repeatButton(); if (!b) { return 'missing:repeat'; } b.click(); return 'clicked'; },
             seek: (t) => { const m = media(); if (!m) { return 'no-media'; } m.currentTime = t; return 'seek'; }
           };
           post({ kind: 'boot', path: location.pathname + location.search.slice(0, 40), vis: realVis() });

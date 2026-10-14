@@ -1,6 +1,10 @@
 import Foundation
 
 /// What the page is doing, as last reported. The web view owns the truth; this only mirrors it.
+enum RepeatMode: String, Equatable, Sendable {
+    case off, all, one
+}
+
 struct PlaybackState: Equatable, Sendable {
     struct QueueEntry: Equatable, Identifiable, Sendable {
         let index: Int
@@ -13,6 +17,8 @@ struct PlaybackState: Equatable, Sendable {
     }
 
     var videoId: String?
+    /// The `list` of the page address: the playlist / radio the page's queue came from.
+    var listId: String?
     var title: String?
     var artist: String?
     var album: String?
@@ -26,6 +32,9 @@ struct PlaybackState: Equatable, Sendable {
     var canGoNext = false
     var canGoPrevious = false
     var queue: [QueueEntry] = []
+    /// Best effort, read from the page's player bar (selectors unverified on a device).
+    var isShuffleEnabled = false
+    var repeatMode: RepeatMode = .off
     var visibility: String?
     var updatedAt = Date.distantPast
 
@@ -61,6 +70,9 @@ struct PlaybackState: Equatable, Sendable {
         if message.keys.contains("videoId") {
             next.videoId = Self.string(message["videoId"])
         }
+        if message.keys.contains("listId") {
+            next.listId = Self.string(message["listId"])
+        }
         if message.keys.contains("title") {
             next.title = Self.string(message["title"])
         }
@@ -76,6 +88,8 @@ struct PlaybackState: Equatable, Sendable {
         if let canNext = message["canNext"] as? Bool { next.canGoNext = canNext }
         if let canPrevious = message["canPrevious"] as? Bool { next.canGoPrevious = canPrevious }
         if let vis = message["vis"] as? String { next.visibility = vis }
+        if let shuffle = message["shuffle"] as? Bool { next.isShuffleEnabled = shuffle }
+        if let mode = message["repeat"] as? String { next.repeatMode = RepeatMode(rawValue: mode) ?? .off }
 
         if let rawQueue = message["queue"] as? [[String: Any]] {
             next.queue = rawQueue.enumerated().map { index, item in

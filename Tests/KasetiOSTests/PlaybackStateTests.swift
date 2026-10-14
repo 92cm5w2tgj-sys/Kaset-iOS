@@ -60,3 +60,31 @@ struct PlaybackStateTests {
         #expect(PlayerScripts.literal("a\"b") == "\"a\\\"b\"")
     }
 }
+
+struct PlaybackStateExtrasTests {
+    @Test func parsesShuffleRepeatAndList() {
+        let state = PlaybackState().applying([
+            "paused": false, "ended": false, "listId": "RDAMVMabc", "shuffle": true, "repeat": "one",
+        ])
+        #expect(state.listId == "RDAMVMabc")
+        #expect(state.isShuffleEnabled)
+        #expect(state.repeatMode == .one)
+    }
+
+    @Test func unknownRepeatFallsBackToOff() {
+        #expect(PlaybackState().applying(["repeat": "weird"]).repeatMode == .off)
+    }
+
+    @Test func playlistBrowseIdPrefixes() {
+        #expect(YTMusicClient.playlistBrowseId(for: "PLabc") == "VLPLabc")
+        #expect(YTMusicClient.playlistBrowseId(for: "VLPLabc") == "VLPLabc")
+        #expect(YTMusicClient.playlistBrowseId(for: "RDCLAK5uy_x") == "RDCLAK5uy_x")
+        #expect(YTMusicClient.playlistBrowseId(for: "MPREb_x") == "MPREb_x")
+    }
+
+    @Test func contentLanguageFallsBackToEnglish() {
+        #expect(ContentLanguage.en.apiCode == "en")
+        #expect(ContentLanguage.fr.apiCode == "fr")
+        #expect(ContentLanguage.system.apiCode.count == 2)
+    }
+}

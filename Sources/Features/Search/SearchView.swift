@@ -82,7 +82,7 @@ struct SearchView: View {
                 }
             }
             .navigationTitle("Search")
-            .navigationDestination(for: MediaEntity.self) { EntityPlaceholderView(entity: $0) }
+            .entityDestinations()
             .toolbar { SettingsToolbarButton() }
         }
         .task {

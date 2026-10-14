@@ -32,7 +32,7 @@ enum PaginatedContentType: String, Hashable {
 
 @MainActor
 final class YTMusicClient {
-    private enum AuthPolicy {
+    enum AuthPolicy {
         case optional
         case required
     }
@@ -40,8 +40,8 @@ final class YTMusicClient {
     private let auth: AuthStore
     private let session: URLSession
     private let apiKeyResolver: YTMusicAPIKeyResolver
-    private let cache: APICache
-    private let logger = DiagnosticsLogger.api
+    let cache: APICache
+    let logger = DiagnosticsLogger.api
 
     /// Brand account ID for the selected account; `nil` for the primary account.
     var brandIdProvider: (() -> String?)?
@@ -76,9 +76,10 @@ final class YTMusicClient {
         self.continuationTokens[type] = nil
 
         let generation = self.continuationGeneration
+        // History changes with every song played: never cached.
         let data = try await self.request(
             "browse", body: ["browseId": type.rawValue],
-            ttl: APICache.TTL.home, bypassCache: forceRefresh
+            ttl: type == .history ? nil : APICache.TTL.home, bypassCache: forceRefresh
         )
         let response = HomeResponseParser.parse(data)
         let token = HomeResponseParser.extractContinuationToken(from: data)
@@ -152,6 +153,12 @@ final class YTMusicClient {
 
     // MARK: - Request plumbing
 
+    static let authRequiredActionEndpoints: Set<String> = [
+        "like/like", "like/dislike", "like/removelike", "feedback",
+        "subscription/subscribe", "subscription/unsubscribe",
+        "playlist/get_add_to_playlist", "browse/edit_playlist", "playlist/create", "playlist/delete",
+    ]
+
     private static let authRequiredBrowseIds: Set<String> = [
         "FEmusic_liked_playlists", "FEmusic_liked_albums", "FEmusic_liked_videos",
         "FEmusic_history", "FEmusic_library_landing", "FEmusic_library_artists",
@@ -162,6 +169,7 @@ final class YTMusicClient {
     ]
 
     private func authPolicy(endpoint: String, body: [String: Any]) -> AuthPolicy {
+        if Self.authRequiredActionEndpoints.contains(endpoint) { return .required }
         if endpoint == "browse", let browseId = body["browseId"] as? String,
            Self.authRequiredBrowseIds.contains(browseId)
             || browseId == LikedMusicPlaylist.browseID
@@ -199,7 +207,7 @@ final class YTMusicClient {
             "client": [
                 "clientName": "WEB_REMIX",
                 "clientVersion": Self.clientVersion,
-                "hl": Locale.current.language.languageCode?.identifier ?? "en",
+                "hl": ContentLanguage.current.apiCode,
                 "gl": "US",
                 "experimentIds": [],
                 "experimentsToken": "",
@@ -215,13 +223,14 @@ final class YTMusicClient {
         ]
     }
 
-    private func request(
+    func request(
         _ endpoint: String,
         body: [String: Any],
         ttl: TimeInterval? = nil,
-        bypassCache: Bool = false
+        bypassCache: Bool = false,
+        authPolicy explicitPolicy: AuthPolicy? = nil
     ) async throws -> [String: Any] {
-        let policy = self.authPolicy(endpoint: endpoint, body: body)
+        let policy = explicitPolicy ?? self.authPolicy(endpoint: endpoint, body: body)
         let (headers, authenticated) = try await self.headers(authPolicy: policy)
 
         var fullBody = body

@@ -36,6 +36,7 @@ struct MiniPlayerView: View {
             .accessibilityLabel("Now Playing")
 
             Button {
+                Haptics.tap()
                 self.environment.player.togglePlayPause()
             } label: {
                 Image(systemName: state.isPlaying ? "pause.fill" : "play.fill")
@@ -44,6 +45,7 @@ struct MiniPlayerView: View {
             .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
 
             Button {
+                Haptics.tap()
                 self.environment.player.next()
             } label: {
                 Image(systemName: "forward.fill")

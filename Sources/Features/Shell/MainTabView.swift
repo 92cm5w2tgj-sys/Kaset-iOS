@@ -18,10 +18,10 @@ struct MainTabView: View {
                 HomeView()
             }
             SwiftUI.Tab("Discover", systemImage: "sparkles", value: Tab.discover) {
-                self.screen("Discover", systemImage: "sparkles", note: "Explore, Charts, Moods, New releases arrive in K7.")
+                DiscoverView()
             }
             SwiftUI.Tab("Collections", systemImage: "square.stack", value: Tab.collections) {
-                self.screen("Collections", systemImage: "square.stack", note: "Library, Liked music, History arrive in K8.")
+                CollectionsView()
             }
             SwiftUI.Tab("Search", systemImage: "magnifyingglass", value: Tab.search, role: .search) {
                 SearchView()
@@ -37,18 +37,6 @@ struct MainTabView: View {
         .fullScreenCover(isPresented: self.$isNowPlayingPresented) {
             NowPlayingView()
                 .navigationTransition(.zoom(sourceID: "miniPlayer", in: self.nowPlayingNamespace))
-        }
-    }
-
-    /// Placeholder tab content with its own navigation stack and the settings entry point.
-    private func screen(_ title: String, systemImage: String, note: String) -> some View {
-        NavigationStack {
-            ScrollView {
-                ContentUnavailableView(title, systemImage: systemImage, description: Text(note))
-                    .padding(.top, 80)
-            }
-            .navigationTitle(title)
-            .toolbar { SettingsToolbarButton() }
         }
     }
 }

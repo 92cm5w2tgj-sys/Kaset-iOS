@@ -1,5 +1,6 @@
 import AVFoundation
 import MediaPlayer
+import Network
 import Observation
 import UIKit
 import WebKit
@@ -40,6 +41,13 @@ final class WebPlayer: NSObject {
     @ObservationIgnored private var lastBeat: Date?
     @ObservationIgnored private var lastRemoteCommand = Date.distantPast
     @ObservationIgnored private var queueAttempt = 0
+    @ObservationIgnored private var lastRecovery = Date.distantPast
+    @ObservationIgnored private var lastSavedAt = Date.distantPast
+    @ObservationIgnored private var lastEvent = ""
+    @ObservationIgnored private let pathMonitor = NWPathMonitor()
+    @ObservationIgnored private var wasOffline = false
+    /// True while the mini player shows the last session and the page has no media yet.
+    @ObservationIgnored private var isShowingRestoredSession = false
 
     override init() {
         self.webView = Self.makeWebView(proxy: self.proxy)
@@ -51,6 +59,8 @@ final class WebPlayer: NSObject {
         self.observeLifecycle()
         self.configureRemoteCommands()
         self.webView.load(URLRequest(url: Self.homeURL))
+        self.restoreSavedSession()
+        self.startPathMonitor()
     }
 
     // MARK: - Web view
@@ -72,6 +82,14 @@ final class WebPlayer: NSObject {
 
         configuration.userContentController.addUserScript(WKUserScript(
             source: PlayerScripts.page, injectionTime: .atDocumentStart, forMainFrameOnly: true
+        ))
+        configuration.userContentController.addUserScript(WKUserScript(
+            source: PlaybackAudioQualityScripts.playbackAudioQualityBootstrapScript(quality: .current),
+            injectionTime: .atDocumentStart, forMainFrameOnly: true
+        ))
+        configuration.userContentController.addUserScript(WKUserScript(
+            source: PlaybackAudioQualityScripts.playbackAudioQualityOverrideScript,
+            injectionTime: .atDocumentEnd, forMainFrameOnly: true
         ))
         configuration.userContentController.add(proxy, name: PlayerScripts.bridgeName)
 
@@ -120,9 +138,35 @@ final class WebPlayer: NSObject {
         self.webView.load(URLRequest(url: url))
     }
 
-    func resume() { self.command("play") }
+    /// Jumps to / removes an entry of the page's queue by its position.
+    func playQueueEntry(at index: Int) { self.command("playQueueIndex", argument: String(index)) }
+    func removeQueueEntry(at index: Int) { self.command("removeQueueIndex", argument: String(index)) }
+
+    func toggleShuffle() { self.command("shuffle") }
+    func cycleRepeat() { self.command("repeat") }
+
+    /// Starts a playlist and turns the page's shuffle on once the player has loaded.
+    func playShuffled(videoId: String?, playlistId: String) {
+        self.play(videoId: videoId, playlistId: playlistId)
+        Task {
+            for _ in 0 ..< 20 {
+                try? await Task.sleep(for: .seconds(1))
+                guard self.state.hasMedia, self.state.isPlaying || self.state.duration > 0 else { continue }
+                if !self.state.isShuffleEnabled { self.toggleShuffle() }
+                return
+            }
+        }
+    }
+
+    func resume() {
+        if !self.state.hasMedia, self.resumeSavedSession() { return }
+        self.command("play")
+    }
     func pause() { self.command("pause") }
-    func togglePlayPause() { self.command("toggle") }
+    func togglePlayPause() {
+        if !self.state.hasMedia, self.resumeSavedSession() { return }
+        self.command("toggle")
+    }
     func next() { self.command("next") }
     func previous() { self.command("previous") }
 
@@ -156,6 +200,12 @@ final class WebPlayer: NSObject {
         self.log.log("cmd", "addToQueue \(videoId)")
         self.webView.evaluateJavaScript(PlayerScripts.addToQueue(videoId: videoId), completionHandler: nil)
         return true
+    }
+
+    /// Applies the stored audio-quality preference to the live page.
+    func applyAudioQuality() {
+        let script = PlaybackAudioQualityScripts.playbackAudioQualitySyncScript(quality: .current)
+        self.webView.evaluateJavaScript(script, completionHandler: nil)
     }
 
     func refreshState() {
@@ -198,8 +248,17 @@ final class WebPlayer: NSObject {
                 }
                 self.lastBeat = now
             }
+            if self.isShowingRestoredSession {
+                // Keep the restored track on screen until the page actually has media.
+                guard message["paused"] is Bool else { return }
+                self.isShowingRestoredSession = false
+            }
             let previousID = self.state.videoId
+            let event = message["ev"] as? String ?? ""
+            self.lastEvent = event
             self.state = self.state.applying(message, at: now)
+            self.persistSession(at: now)
+            if event == "error" || event == "stalled" || event == "emptied" { self.scheduleRecoveryCheck(after: event) }
             if self.state.videoId != previousID {
                 self.log.log("track", "\(self.state.title ?? "?") — \(self.state.artist ?? "?") [\(self.state.videoId ?? "-")]")
             }
@@ -227,6 +286,113 @@ final class WebPlayer: NSObject {
         default:
             break
         }
+    }
+
+    // MARK: - Recovery and session restore
+
+    /// What is needed to bring the player back to where it was.
+    private struct SavedSession: Codable {
+        var videoId: String
+        var listId: String?
+        var position: TimeInterval
+        var title: String?
+        var artist: String?
+        var artworkURL: URL?
+    }
+
+    private static let savedSessionKey = "playback.savedSession"
+
+    private var savedSession: SavedSession? {
+        UserDefaults.standard.data(forKey: Self.savedSessionKey)
+            .flatMap { try? JSONDecoder().decode(SavedSession.self, from: $0) }
+    }
+
+    /// Throttled: at most every 5 s, so a kill loses only a few seconds of position.
+    private func persistSession(at date: Date) {
+        guard let videoId = self.state.videoId, self.state.hasMedia else { return }
+        guard date.timeIntervalSince(self.lastSavedAt) >= 5 else { return }
+        self.lastSavedAt = date
+        let session = SavedSession(
+            videoId: videoId, listId: self.state.listId, position: self.state.position,
+            title: self.state.title, artist: self.state.artist, artworkURL: self.state.artworkURL
+        )
+        if let data = try? JSONEncoder().encode(session) {
+            UserDefaults.standard.set(data, forKey: Self.savedSessionKey)
+        }
+    }
+
+    /// Shows the last track in the mini player after a cold start, without playing anything.
+    private func restoreSavedSession() {
+        guard let saved = self.savedSession else { return }
+        var restored = PlaybackState()
+        restored.videoId = saved.videoId
+        restored.listId = saved.listId
+        restored.title = saved.title
+        restored.artist = saved.artist
+        restored.artworkURL = saved.artworkURL
+        restored.position = saved.position
+        self.state = restored
+        self.isShowingRestoredSession = true
+    }
+
+    /// Loads the saved track at its saved position (user pressed play on a restored mini player).
+    @discardableResult
+    private func resumeSavedSession() -> Bool {
+        guard let saved = self.savedSession else { return false }
+        self.log.log("restore", "resume \(saved.videoId) list=\(saved.listId ?? "-") at \(Int(saved.position))s")
+        self.load(videoId: saved.videoId, listId: saved.listId, at: saved.position)
+        return true
+    }
+
+    private func load(videoId: String, listId: String?, at position: TimeInterval) {
+        var components = URLComponents(string: "https://music.youtube.com/watch")!
+        var items = [URLQueryItem(name: "v", value: videoId)]
+        if let listId { items.append(URLQueryItem(name: "list", value: listId)) }
+        if position > 3 { items.append(URLQueryItem(name: "t", value: "\(Int(position))s")) }
+        components.queryItems = items
+        if let url = components.url { self.webView.load(URLRequest(url: url)) }
+    }
+
+    /// Brings playback back after a page failure: same track, same list, same position.
+    /// Rate limited so a persistent failure cannot loop.
+    func recover(reason: String) {
+        let now = Date()
+        guard now.timeIntervalSince(self.lastRecovery) > 15 else { return }
+        guard let videoId = self.state.videoId else {
+            self.webView.reload()
+            return
+        }
+        self.lastRecovery = now
+        self.log.log("recover", "\(reason): reload \(videoId) at \(Int(self.state.position(at: now)))s")
+        self.load(videoId: videoId, listId: self.state.listId, at: self.state.position(at: now))
+    }
+
+    /// An `error`/`stalled` event is only a problem if playback has not come back shortly after.
+    private func scheduleRecoveryCheck(after event: String) {
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(8))
+            guard let self else { return }
+            guard self.lastEvent == event, !self.state.isPlaying, self.state.hasMedia else { return }
+            // Paused by the user is not a failure: only recover when it looks stuck.
+            if event == "error" || event == "stalled" || event == "emptied" {
+                self.recover(reason: "stuck after \(event)")
+            }
+        }
+    }
+
+    private func startPathMonitor() {
+        self.pathMonitor.pathUpdateHandler = { [weak self] path in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                let online = path.status == .satisfied
+                self.log.log("network", online ? "online" : "offline")
+                if online, self.wasOffline, self.state.hasMedia, !self.state.isPlaying, self.lastEvent != "pause" {
+                    self.recover(reason: "network back")
+                }
+                self.wasOffline = !online
+            }
+        }
+        self.pathMonitor.start(queue: DispatchQueue(label: "dev.emoona.kaset.path"))
     }
 
     // MARK: - Now Playing / remote commands
@@ -346,10 +512,11 @@ extension WebPlayer: WKNavigationDelegate, WKUIDelegate {
         self.log.log("nav", "didFailProvisional \(error.localizedDescription)")
     }
 
-    /// iOS killed the page's process. Restoring track/position/queue is K11; for now reload.
+    /// iOS killed the page's process: reload the same track, list and position.
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
         self.log.log("nav", "WEBCONTENT PROCESS TERMINATED")
-        webView.reload()
+        self.lastRecovery = .distantPast
+        self.recover(reason: "web content terminated")
     }
 
     func webView(

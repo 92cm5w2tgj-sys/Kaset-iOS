@@ -8,6 +8,7 @@ struct MediaEntity: Identifiable, Hashable {
         case playlist(id: String)
         case album(id: String)
         case artist(id: String)
+        case mood(browseId: String, params: String?)
         case unsupported
     }
 
@@ -29,6 +30,7 @@ struct MediaEntity: Identifiable, Hashable {
         case .playlist: "Playlist"
         case .album: "Album"
         case .artist: "Artist"
+        case .mood: "Mood"
         case .unsupported: ""
         }
     }
@@ -56,10 +58,17 @@ extension MediaEntity {
                 thumbnailURL: album.thumbnailURL, target: .album(id: album.id), isCircular: false
             )
         case let .playlist(playlist):
-            self.init(
-                id: item.id, title: playlist.title, subtitle: playlist.author?.name,
-                thumbnailURL: playlist.thumbnailURL, target: .playlist(id: playlist.id), isCircular: false
-            )
+            if let mood = playlist.resolvedMoodCategoryEndpoint {
+                self.init(
+                    id: item.id, title: playlist.title, subtitle: nil, thumbnailURL: nil,
+                    target: .mood(browseId: mood.browseId, params: mood.params), isCircular: false
+                )
+            } else {
+                self.init(
+                    id: item.id, title: playlist.title, subtitle: playlist.author?.name,
+                    thumbnailURL: playlist.thumbnailURL, target: .playlist(id: playlist.id), isCircular: false
+                )
+            }
         case let .artist(artist):
             self.init(
                 id: item.id, title: artist.name, subtitle: artist.subtitle,
@@ -99,5 +108,29 @@ extension MediaEntity {
     /// Playlist ids from browse carry a `VL` prefix that `watch?list=` does not accept.
     static func watchPlaylistId(_ id: String) -> String {
         id.hasPrefix("VL") ? String(id.dropFirst(2)) : id
+    }
+}
+
+extension MediaEntity {
+    init(_ playlist: Playlist) {
+        self.init(
+            id: "playlist-\(playlist.id)", title: playlist.title, subtitle: playlist.author?.name,
+            thumbnailURL: playlist.thumbnailURL, target: .playlist(id: playlist.id), isCircular: false
+        )
+    }
+
+    init(_ album: Album) {
+        self.init(
+            id: "album-\(album.id)", title: album.title,
+            subtitle: album.artistsDisplay.isEmpty ? nil : album.artistsDisplay,
+            thumbnailURL: album.thumbnailURL, target: .album(id: album.id), isCircular: false
+        )
+    }
+
+    init(_ artist: Artist) {
+        self.init(
+            id: "artist-\(artist.id)", title: artist.name, subtitle: artist.subtitle,
+            thumbnailURL: artist.thumbnailURL, target: .artist(id: artist.id), isCircular: true
+        )
     }
 }

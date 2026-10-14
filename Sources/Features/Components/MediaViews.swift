@@ -59,7 +59,7 @@ struct MediaActions<Content: View>: View {
             Button(action: self.play) { self.content }
                 .buttonStyle(.plain)
                 .contextMenu { self.menu }
-        case .album, .artist:
+        case .album, .artist, .mood:
             NavigationLink(value: self.entity) { self.content }
                 .buttonStyle(.plain)
         case .unsupported:
@@ -90,21 +90,6 @@ struct MediaActions<Content: View>: View {
                 self.environment.player.addToQueue(videoId: videoId)
             }
         }
-    }
-}
-
-/// Destination for albums and artists until the detail screens exist (K8).
-struct EntityPlaceholderView: View {
-    let entity: MediaEntity
-
-    var body: some View {
-        ContentUnavailableView(
-            self.entity.title,
-            systemImage: "square.stack",
-            description: Text("\(self.entity.kindLabel) details arrive in a later step.")
-        )
-        .navigationTitle(self.entity.title)
-        .navigationBarTitleDisplayMode(.inline)
     }
 }
 

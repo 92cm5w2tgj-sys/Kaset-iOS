@@ -18,6 +18,8 @@ targets:
       path: Sources/Info.plist
       properties:
         CFBundleDisplayName: Kaset
+        CFBundleLocalizations: [en, fr]
+        CFBundleDevelopmentRegion: en
         UIBackgroundModes:
           - audio
         UILaunchScreen: {}
