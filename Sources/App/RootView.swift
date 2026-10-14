@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// Minimal root until the app shell lands (K5). While the debug lab is closed, the lab's
-/// web view stays attached to the window as a 1×1 hidden view so audio keeps running.
+/// Minimal root until the app shell lands (K5). The player's web view stays attached to the
+/// window as a hidden 1×1 view for the whole app lifetime so audio keeps running.
 struct RootView: View {
     @Environment(AppEnvironment.self) private var environment
 
@@ -14,19 +14,17 @@ struct RootView: View {
             Text("Kaset")
                 .font(.largeTitle.bold())
             self.accountRow
-            Button("Debug lab") { environment.isLabPresented = true }
+            Button("Playback debug") { environment.isPlaybackDebugPresented = true }
                 .buttonStyle(.borderedProminent)
             Button("API debug") { environment.isAPIDebugPresented = true }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(alignment: .topLeading) {
-            if !environment.isLabPresented {
-                WebViewHost(webView: environment.lab.webView)
-                    .id(environment.lab.generation)
-                    .frame(width: 1, height: 1)
-                    .opacity(0)
-                    .allowsHitTesting(false)
-            }
+            WebViewHost(webView: environment.player.webView)
+                .id(environment.player.generation)
+                .frame(width: 1, height: 1)
+                .opacity(0)
+                .allowsHitTesting(false)
         }
         .task { await environment.start() }
         .sheet(isPresented: $environment.isLoginPresented) {
@@ -35,13 +33,8 @@ struct RootView: View {
         .sheet(isPresented: $environment.isAPIDebugPresented) {
             APIDebugView(client: environment.client)
         }
-        .fullScreenCover(isPresented: $environment.isLabPresented) {
-            DebugLabView(model: environment.lab)
-                .overlay(alignment: .topTrailing) {
-                    Button("Fermer") { environment.isLabPresented = false }
-                        .font(.footnote)
-                        .padding(8)
-                }
+        .sheet(isPresented: $environment.isPlaybackDebugPresented) {
+            PlaybackDebugView(player: environment.player)
         }
     }
 

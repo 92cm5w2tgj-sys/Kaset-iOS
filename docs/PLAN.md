@@ -159,6 +159,9 @@ Spike validated; direction changed to a native app on top of the spike; this pla
 - Native Now Playing from the mirrored state (title/artist/artwork/elapsed); measured
   comparison with the page's own card, recorded here.
 - Debug transport: play a song id, next/previous/play-next, state readout.
+- The spike lab (`PlayerModel`, `PageScript`) is retired here: two engines cannot share the
+  audio session and remote commands. Its evidence stays in `spike-findings.md`; the log
+  (`SpikeLog`) is kept.
 - **Verify (user), spike matrix with real code:** lock 5 min and tracks advance · pause on
   lock screen + 3 min + play · lock-screen next/previous · pause then lock immediately +
   3 min + play · lock-screen shows title, artist, artwork, elapsed.

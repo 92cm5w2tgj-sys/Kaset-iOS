@@ -6,6 +6,6 @@ import Testing
 struct SmokeTests {
     @Test func environmentBoots() {
         let environment = AppEnvironment()
-        #expect(environment.isLabPresented == false)
+        #expect(environment.isPlaybackDebugPresented == false)
     }
 }

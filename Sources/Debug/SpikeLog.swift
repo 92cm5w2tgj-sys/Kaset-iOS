@@ -47,19 +47,3 @@ final class SpikeLog: ObservableObject {
         try? self.handle?.synchronize()
     }
 }
-
-/// UserDefaults-backed flags. The `@AppStorage` toggles in the UI use the same keys.
-enum SpikeSettings {
-    static var desktopUserAgent: Bool { bool("desktopUA", default: true) }
-    static var spoofVisibility: Bool { bool("spoofVisibility", default: false) }
-    static var autoConfirm: Bool { bool("autoConfirm", default: true) }
-    static var resumeOnBackground: Bool { bool("resumeOnBackground", default: false) }
-    /// Silent Web Audio output inside the page, to keep the WebContent process alive while paused.
-    static var keepAlive: Bool { bool("keepAlive", default: false) }
-    /// Native play/pause lock-screen commands that drive the page through evaluateJavaScript.
-    static var nativeTransport: Bool { bool("nativeTransport", default: false) }
-
-    private static func bool(_ key: String, default value: Bool) -> Bool {
-        UserDefaults.standard.object(forKey: key) as? Bool ?? value
-    }
-}
