@@ -42,6 +42,12 @@ final class NowPlayingPublisher {
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
     }
 
+    /// Must be `nonisolated`: MediaPlayer calls the image handler on its own queue, and a closure
+    /// created in this `@MainActor` class would inherit main-actor isolation and trap there.
+    nonisolated private static func makeArtwork(_ image: UIImage) -> MPMediaItemArtwork {
+        MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+    }
+
     private func loadArtwork(_ url: URL?) {
         self.artworkTask?.cancel()
         guard let url else { return }
@@ -50,7 +56,7 @@ final class NowPlayingPublisher {
                   !Task.isCancelled,
                   let image = UIImage(data: data)
             else { return }
-            let artwork = MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+            let artwork = Self.makeArtwork(image)
             guard let self, self.artworkURL == url else { return }
             self.artwork = artwork
             var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
