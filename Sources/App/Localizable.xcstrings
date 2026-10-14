@@ -704,6 +704,9 @@
         }
       }
     },
+    "Reordering…" : {
+
+    },
     "Repeat" : {
       "extractionState" : "stale",
       "localizations" : {

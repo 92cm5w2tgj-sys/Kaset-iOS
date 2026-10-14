@@ -23,7 +23,9 @@ struct RootView: View {
         .background(alignment: .topLeading) {
             WebViewHost(webView: environment.player.webView)
                 .id(environment.player.generation)
-                .frame(width: 1, height: 1)
+                // A phone-sized (but invisible) page: at 1×1 the web app lays out as a tiny
+                // viewport and its queue/player-bar DOM is not reliably populated.
+                .frame(width: 390, height: 844)
                 .opacity(0)
                 .allowsHitTesting(false)
         }

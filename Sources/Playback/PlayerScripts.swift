@@ -123,20 +123,40 @@ enum PlayerScripts {
             const n = el.querySelector(sel);
             return n ? n.textContent.trim() : '';
           };
+          // Same reading as kaset's queue injection: the video id sits at a varying depth.
+          const firstVideoId = (root) => {
+            const seen = new Set();
+            const visit = (value, depth) => {
+              if (!value || typeof value !== 'object' || depth > 7 || seen.has(value)) { return ''; }
+              seen.add(value);
+              for (const [key, child] of Object.entries(value)) {
+                if ((key === 'videoId' || key === 'video_id') && typeof child === 'string' && child) { return child; }
+              }
+              for (const child of Object.values(value)) {
+                const found = visit(child, depth + 1);
+                if (found) { return found; }
+              }
+              return '';
+            };
+            return visit(root, 0);
+          };
+          const QUEUE_ITEMS = 'ytmusic-player-queue-item, ytmusic-player-queue-item-renderer, '
+            + 'ytmusic-player-queue ytmusic-responsive-list-item-renderer';
+          const queueItemIsCurrent = (el) => {
+            if (el.__kasetIsCurrent === true) { return true; }
+            if (el.hasAttribute('selected') || el.hasAttribute('is-playlist-panel-video-renderer-selected')) { return true; }
+            const aria = el.getAttribute('aria-current');
+            if (aria === 'true' || aria === 'page') { return true; }
+            return el.classList.contains('selected');
+          };
           const queue = () => {
-            const items = Array.from(document.querySelectorAll('ytmusic-player-queue-item'));
-            return items.slice(0, 200).map((el) => {
-              const d = el.data || el.__data || {};
-              const current = el.hasAttribute('selected')
-                || el.hasAttribute('is-playlist-panel-video-renderer-selected')
-                || el.getAttribute('aria-current') === 'true';
-              return {
-                videoId: (d && d.videoId) || '',
-                title: text(el, '.song-title'),
-                artist: text(el, '.byline'),
-                current: current
-              };
-            });
+            const items = Array.from(document.querySelectorAll(QUEUE_ITEMS));
+            return items.slice(0, 200).map((el) => ({
+              videoId: firstVideoId(el.data || el.__data || null),
+              title: text(el, '.song-title') || text(el, 'yt-formatted-string.title'),
+              artist: text(el, '.byline') || text(el, 'yt-formatted-string.byline'),
+              current: queueItemIsCurrent(el)
+            }));
           };
 
           // Shuffle / repeat live on the player bar. Selectors and attributes are best effort.
@@ -309,7 +329,7 @@ enum PlayerScripts {
             previous: () => click('previous'),
             // Queue editing goes through the page's own queue items (selectors best effort).
             playQueueIndex: (i) => {
-              const items = Array.from(document.querySelectorAll('ytmusic-player-queue-item'));
+              const items = Array.from(document.querySelectorAll(QUEUE_ITEMS));
               const el = items[i];
               if (!el) { return 'missing:queue-item'; }
               const play = el.querySelector('ytmusic-play-button-renderer') || el;
@@ -317,7 +337,7 @@ enum PlayerScripts {
               return 'clicked';
             },
             removeQueueIndex: (i) => {
-              const items = Array.from(document.querySelectorAll('ytmusic-player-queue-item'));
+              const items = Array.from(document.querySelectorAll(QUEUE_ITEMS));
               const el = items[i];
               if (!el) { return 'missing:queue-item'; }
               const menuButton = el.querySelector('ytmusic-menu-renderer button, ytmusic-menu-renderer tp-yt-paper-icon-button');
@@ -335,7 +355,7 @@ enum PlayerScripts {
             },
             // Awaitable variant used by queue reordering: resolves once the queue shrank.
             removeQueueIndexAsync: (i) => new Promise((resolve) => {
-              const items = Array.from(document.querySelectorAll('ytmusic-player-queue-item'));
+              const items = Array.from(document.querySelectorAll(QUEUE_ITEMS));
               const before = items.length;
               const el = items[i];
               if (!el) { return resolve('missing:queue-item'); }
@@ -353,7 +373,7 @@ enum PlayerScripts {
                   let checks = 0;
                   const verify = setInterval(() => {
                     checks += 1;
-                    if (document.querySelectorAll('ytmusic-player-queue-item').length < before) {
+                    if (document.querySelectorAll(QUEUE_ITEMS).length < before) {
                       clearInterval(verify);
                       resolve('removed');
                     } else if (checks > 30) {

@@ -46,6 +46,7 @@ struct MiniPlayerView: View {
                 Image(systemName: state.isPlaying ? "pause.fill" : "play.fill")
                     .frame(width: 32, height: 32)
             }
+            .foregroundStyle(.primary)
             .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
 
             Button {
@@ -55,6 +56,7 @@ struct MiniPlayerView: View {
                 Image(systemName: "forward.fill")
                     .frame(width: 32, height: 32)
             }
+            .foregroundStyle(.primary)
             .disabled(!state.canGoNext)
             .accessibilityLabel("Next")
         }

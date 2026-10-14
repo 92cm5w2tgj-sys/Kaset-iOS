@@ -33,6 +33,8 @@ final class WebPlayer: NSObject {
     private(set) var generation = 0
     /// True while a queue reorder is rewriting the page's queue.
     private(set) var isReorderingQueue = false
+    /// Short message about the last queue operation (shown briefly by the shell).
+    private(set) var queueNotice: String?
     /// When the page last reported anything, and the page's address; for the debug readout.
     private(set) var lastMessageAt: Date?
     private(set) var pageURL: String?
@@ -193,6 +195,14 @@ final class WebPlayer: NSObject {
         return true
     }
 
+    private func postNotice(_ text: String) {
+        self.queueNotice = text
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(3.5))
+            if self?.queueNotice == text { self?.queueNotice = nil }
+        }
+    }
+
     /// `playNext` that waits for the page's readback (or a timeout).
     private func playNextAndWait(videoId: String, after sourceVideoId: String) async -> Bool {
         self.queueAttempt += 1
@@ -225,12 +235,21 @@ final class WebPlayer: NSObject {
     ///   position the entry must end at.
     func moveQueueEntry(from source: Int, to destination: Int) async {
         let queue = self.state.queue
-        guard !self.isReorderingQueue,
-              let current = queue.firstIndex(where: \.isCurrent),
-              case let currentVideoId = queue[current].videoId, !currentVideoId.isEmpty,
-              source > current, destination > current, source != destination,
-              source < queue.count, destination < queue.count
-        else { return }
+        guard !self.isReorderingQueue else { return }
+        guard let current = queue.firstIndex(where: \.isCurrent) else {
+            self.log.log("queue", "reorder skipped: the page reports no current queue entry")
+            self.postNotice("Couldn't reorder: current track not found in the queue")
+            return
+        }
+        let currentVideoId = queue[current].videoId.isEmpty ? (self.state.videoId ?? "") : queue[current].videoId
+        guard !currentVideoId.isEmpty, source > current, destination > current, source != destination,
+              source < queue.count, destination < queue.count,
+              !queue[(current + 1) ... max(source, destination)].contains(where: { $0.videoId.isEmpty })
+        else {
+            self.log.log("queue", "reorder skipped: source=\(source) dest=\(destination) current=\(current) count=\(queue.count)")
+            self.postNotice("Couldn't reorder this entry")
+            return
+        }
 
         self.isReorderingQueue = true
         defer { self.isReorderingQueue = false }
@@ -248,6 +267,8 @@ final class WebPlayer: NSObject {
         for index in stride(from: last, through: first, by: -1) {
             guard await self.removeQueueEntryAndWait(at: index) else {
                 self.log.log("queue", "reorder aborted while removing index \(index)")
+                self.postNotice("Reorder stopped: couldn't remove an entry")
+                self.refreshState()
                 return
             }
         }
@@ -255,6 +276,8 @@ final class WebPlayer: NSObject {
         for videoId in newPrefix.reversed() {
             guard await self.playNextAndWait(videoId: videoId, after: currentVideoId) else {
                 self.log.log("queue", "reorder aborted while re-inserting \(videoId)")
+                self.postNotice("Reorder stopped: couldn't re-insert an entry")
+                self.refreshState()
                 return
             }
         }
@@ -360,7 +383,13 @@ final class WebPlayer: NSObject {
             let success = message["success"] as? Bool ?? false
             let reason = message["reason"] as? String ?? ""
             self.lastQueueResult = (id, success, reason)
-            self.log.log("queue", "playNext \(id) success=\(success) \(reason)")
+            self.log.log("queue", "\(message["op"] as? String ?? "playNext") \(id) success=\(success) \(reason)")
+            let isAdd = (message["op"] as? String) == "add"
+            if success {
+                self.postNotice(isAdd ? "Added to the queue" : "Playing next")
+            } else {
+                self.postNotice("Couldn't \(isAdd ? "add to the queue" : "queue next"): \(reason)")
+            }
         case "ka":
             self.log.log("keepalive", "AudioContext \(message["state"] as? String ?? "?")")
         case "ms":
