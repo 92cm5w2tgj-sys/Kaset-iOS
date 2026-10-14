@@ -107,10 +107,18 @@ struct BrowsePageView: View {
     }
 }
 
-/// Titled horizontal shelf. Mood entries render as compact chips instead of artwork cards.
+/// Titled shelf. Mood / genre sections are a grid of chips (3 to 4 columns depending on the
+/// width); everything else is a horizontally scrolling row of artwork cards.
 struct ShelfView: View {
     let title: String
     let entities: [MediaEntity]
+
+    private var isMoodGrid: Bool {
+        !self.entities.isEmpty && self.entities.allSatisfy {
+            if case .mood = $0.target { return true }
+            return false
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -120,24 +128,32 @@ struct ShelfView: View {
                     .padding(.horizontal, 20)
                     .accessibilityAddTraits(.isHeader)
             }
-            ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: 16) {
+            if self.isMoodGrid {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 92), spacing: 10)], spacing: 10) {
                     ForEach(self.entities) { entity in
                         MediaActions(entity: entity) {
-                            if case .mood = entity.target {
-                                Text(entity.title)
-                                    .font(.subheadline.weight(.semibold))
-                                    .padding(.horizontal, 18)
-                                    .padding(.vertical, 14)
-                                    .glassEffect(.regular, in: .rect(cornerRadius: 14))
-                            } else {
-                                MediaCard(entity: entity)
-                            }
+                            Text(entity.title)
+                                .font(.subheadline.weight(.semibold))
+                                .multilineTextAlignment(.center)
+                                .lineLimit(2)
+                                .minimumScaleFactor(0.85)
+                                .frame(maxWidth: .infinity, minHeight: 52)
+                                .padding(.horizontal, 8)
+                                .glassEffect(.regular, in: .rect(cornerRadius: 14))
                         }
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.vertical, 4)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    LazyHStack(alignment: .top, spacing: 16) {
+                        ForEach(self.entities) { entity in
+                            MediaActions(entity: entity) { MediaCard(entity: entity) }
+                        }
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.vertical, 4)
+                }
             }
         }
     }
