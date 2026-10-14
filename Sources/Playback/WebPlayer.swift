@@ -628,14 +628,25 @@ final class WebPlayer: NSObject {
 
     // MARK: - Audio session
 
+    /// Category and activation run off the main thread: `setActive` can block for a while and
+    /// AVAudioSession warns about calling it on the main thread.
     private func configureAudioSession() {
+        Task.detached(priority: .userInitiated) { [weak self] in
+            let result = Self.activateAudioSession(configuring: true)
+            await self?.log.log("audio", result)
+        }
+    }
+
+    nonisolated private static func activateAudioSession(configuring: Bool) -> String {
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.playback, mode: .default, options: [])
+            if configuring {
+                try session.setCategory(.playback, mode: .default, options: [])
+            }
             try session.setActive(true)
-            self.log.log("audio", "session active outputs=\(self.outputs())")
+            return "session active"
         } catch {
-            self.log.log("audio", "session setup FAILED: \(error.localizedDescription)")
+            return "session setup FAILED: \(error.localizedDescription)"
         }
     }
 
@@ -667,7 +678,7 @@ final class WebPlayer: NSObject {
         case .ended:
             let resume = AVAudioSession.InterruptionOptions(rawValue: options ?? 0).contains(.shouldResume)
             self.log.log("audio", "interruption ENDED shouldResume=\(resume)")
-            try? AVAudioSession.sharedInstance().setActive(true)
+            Task.detached(priority: .userInitiated) { _ = Self.activateAudioSession(configuring: false) }
             if resume { self.resume() }
         @unknown default:
             break
