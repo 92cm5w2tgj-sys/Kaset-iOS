@@ -81,12 +81,11 @@ Sources/
   Features/   Home, Discover, Collections, Search, Detail, Now Playing, Settings, Shell
   Debug/      log and diagnostic screens
 Tests/        parsers (sanitized fixtures), auth, playback state
-docs/         plan, tracker, spike findings
+docs/         screenshots, spike findings
 ```
 
-See [`docs/PLAN.md`](docs/PLAN.md), [`docs/TRACKER.md`](docs/TRACKER.md) and
-[`docs/spike-findings.md`](docs/spike-findings.md) for the design decisions and the evidence
-behind the playback approach.
+See [`docs/spike-findings.md`](docs/spike-findings.md) for the evidence behind the playback
+approach (background playback, keep-alive, lock-screen controls).
 
 ## Requirements
 
@@ -137,9 +136,9 @@ personal responses; fixtures use placeholders only.
 
 ## Contributing
 
-Issues and pull requests are welcome. Before opening one, please read `docs/PLAN.md` for the
-ground rules: verify endpoints before writing parsers, keep the web view as the source of truth,
-and never log secrets.
+Issues and pull requests are welcome. A few ground rules: verify an endpoint against the real
+service (or Kaset's `api-explorer`) before writing a parser, keep the web view as the source of
+truth for playback, and never put cookies, tokens or personal responses in code, logs or fixtures.
 
 ## Acknowledgements
 
