@@ -9,6 +9,8 @@ import SwiftUI
 @Observable
 final class NowPlayingModel {
     private(set) var likeStatus: LikeStatus = .indifferent
+    /// Artists of the current track, with ids, from the song metadata.
+    private(set) var artists: [Artist] = []
     private(set) var lyrics: Lyrics?
     private(set) var isLoadingLyrics = false
     /// Average colour of the current artwork; drives the background gradient.
@@ -26,10 +28,21 @@ final class NowPlayingModel {
         self.loadedVideoId = videoId
         self.lyrics = nil
         self.likeStatus = .indifferent
+        self.artists = []
         guard let videoId else { return }
         if let song = try? await self.client.getSong(videoId: videoId), self.loadedVideoId == videoId {
             self.likeStatus = song.likeStatus ?? .indifferent
+            self.artists = song.artists.filter(\.hasNavigableId)
         }
+    }
+
+    /// Artist to open for a tapped name: from metadata, else the top artist search result.
+    func resolveArtist(named name: String?) async -> Artist? {
+        if let first = self.artists.first { return first }
+        guard let name, !name.isEmpty,
+              let response = try? await self.client.search(query: name)
+        else { return nil }
+        return response.artists.first
     }
 
     func artworkChanged(to url: URL?) async {
@@ -91,6 +104,7 @@ struct NowPlayingView: View {
     @State private var isQueuePresented = false
     @State private var isLyricsPresented = false
     @State private var dragOffset: CGFloat = 0
+    @State private var artistToShow: Artist?
 
     var body: some View {
         let state = self.environment.player.state
@@ -166,6 +180,17 @@ struct NowPlayingView: View {
             self.model = model
             await model.artworkChanged(to: state.artworkURL)
         }
+        .sheet(item: self.$artistToShow) { artist in
+            NavigationStack {
+                ArtistDetailView(id: artist.id, fallbackName: artist.name)
+                    .entityDestinations()
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("Done") { self.artistToShow = nil }
+                        }
+                    }
+            }
+        }
         .sheet(isPresented: self.$isQueuePresented) { QueueView() }
         .sheet(isPresented: self.$isLyricsPresented) {
             LyricsSheet(model: self.model, videoId: state.videoId)
@@ -190,10 +215,7 @@ struct NowPlayingView: View {
                     .font(.system(size: 22, weight: .semibold))
                     .foregroundStyle(.white)
                     .lineLimit(1)
-                Text(state.artist ?? " ")
-                    .font(.system(size: 22))
-                    .foregroundStyle(.white.opacity(0.6))
-                    .lineLimit(1)
+                self.artistLabel(state)
             }
             Spacer(minLength: 0)
             Menu {
@@ -217,6 +239,35 @@ struct NowPlayingView: View {
                     .contentShape(Rectangle())
             }
             .accessibilityLabel("More")
+        }
+    }
+
+    /// The artist name is a button: one artist opens their page, several offer a menu.
+    @ViewBuilder
+    private func artistLabel(_ state: PlaybackState) -> some View {
+        let text = Text(state.artist ?? " ")
+            .font(.system(size: 22))
+            .foregroundStyle(.white.opacity(0.6))
+            .lineLimit(1)
+        let artists = self.model?.artists ?? []
+        if artists.count > 1 {
+            Menu {
+                ForEach(artists) { artist in
+                    Button(artist.name) { self.artistToShow = artist }
+                }
+            } label: { text }
+        } else if state.artist != nil {
+            Button {
+                Task {
+                    if let artist = await self.model?.resolveArtist(named: state.artist) {
+                        self.artistToShow = artist
+                    }
+                }
+            } label: { text }
+            .buttonStyle(.plain)
+            .accessibilityHint("Opens the artist page")
+        } else {
+            text
         }
     }
 

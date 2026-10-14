@@ -10,6 +10,9 @@ final class AppEnvironment {
     let player: WebPlayer
     private let accountSwitcher = AccountSwitcher()
 
+    /// Photo of the selected account, for the navigation bar button.
+    private(set) var accountAvatarURL: URL?
+
     var isPlaybackDebugPresented = false
     var isLoginPresented = false
 
@@ -55,18 +58,30 @@ final class AppEnvironment {
         if await self.auth.restore() {
             self.player.reload()
         }
+        await self.refreshAccount()
+    }
+
+    func refreshAccount() async {
+        guard self.auth.state == .signedIn else {
+            self.accountAvatarURL = nil
+            return
+        }
+        let accounts = try? await self.client.fetchAccountsList().accounts
+        self.accountAvatarURL = (accounts?.first(where: \.isSelected) ?? accounts?.first)?.thumbnailURL
     }
 
     func loginFinished() async {
         if await self.auth.loginFinished() {
             self.isLoginPresented = false
             self.player.reload()
+            await self.refreshAccount()
         }
     }
 
     func signOut() async {
         await self.auth.signOut()
         UserDefaults.standard.removeObject(forKey: AccountSwitcher.brandIdKey)
+        self.accountAvatarURL = nil
         self.client.resetSessionState()
         self.player.reload()
     }

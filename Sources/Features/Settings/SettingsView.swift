@@ -9,6 +9,7 @@ struct SettingsView: View {
     @AppStorage(ContentLanguage.storageKey) private var language = ContentLanguage.system.rawValue
     @AppStorage(Haptics.storageKey) private var haptics = true
     @AppStorage("nativeNowPlaying") private var nativeNowPlaying = true
+    @AppStorage(AdSkip.storageKey) private var adAutoSkip = false
 
     @State private var accounts: [UserAccount] = []
     @State private var isSwitching = false
@@ -18,13 +19,19 @@ struct SettingsView: View {
             Form {
                 self.accountSection
 
-                Section("Playback") {
+                Section {
                     Picker("Audio quality", selection: self.$audioQuality) {
                         ForEach(PlaybackAudioQuality.allCases) { Text($0.displayName).tag($0.rawValue) }
                     }
                     .onChange(of: self.audioQuality) { _, _ in self.environment.player.applyAudioQuality() }
                     Toggle("Haptic feedback", isOn: self.$haptics)
+                    Toggle("Skip ads automatically", isOn: self.$adAutoSkip)
+                } header: {
+                    Text("Playback")
+                } footer: {
+                    Text("Skipping ads is an opt-in and may go against YouTube's terms of service.")
                 }
+                .onChange(of: self.adAutoSkip) { _, _ in self.environment.player.applyAdSkipSetting() }
 
                 Section {
                     Picker("Content language", selection: self.$language) {

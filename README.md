@@ -1,73 +1,138 @@
-# YTM Spike — la lecture YouTube Music tient-elle en arrière-plan sur iOS ?
+<p align="center">
+  <img src="Sources/App/Assets.xcassets/AppIcon.appiconset/AppIcon.png" width="140" alt="Kaset icon">
+</p>
 
-Mini-app iOS : un seul `WKWebView` sur `music.youtube.com`, une `AVAudioSession(.playback)`,
-`UIBackgroundModes=audio`, et beaucoup d'instrumentation. Elle sert à répondre à une seule question :
-**une playlist continue-t-elle et enchaîne-t-elle les pistes écran verrouillé / app en arrière-plan ?**
+<h1 align="center">Kaset for iOS</h1>
 
-## Lancer
+<p align="center">
+  A native SwiftUI YouTube Music client for iPhone, built to keep playing with the screen locked.
+</p>
 
-```bash
-cd "/Users/mickaelbelhassen/Desktop/Developer/Kaset-iOS"
-xcodegen generate          # régénère YTMSpike.xcodeproj depuis project.yml
-open YTMSpike.xcodeproj
+---
+
+Kaset for iOS is an unofficial, open-source YouTube Music client. The interface is fully native
+(SwiftUI, Liquid Glass, iOS 26), while playback is delegated to the real YouTube Music web
+player running in a hidden web view. That gives you background playback, lock-screen and
+AirPods controls, and an Apple Music-like interface, with your own YouTube Music account.
+
+It is **inspired by, and adapted from, [Kaset for macOS](https://github.com/sozercan/kaset)**
+by [@sozercan](https://github.com/sozercan): the InnerTube client, response parsers, models,
+playback-bridge scripts and the app icon come from there. This project exists because the
+macOS app's player stack could not be shared with iOS as is, so the pieces that matter were
+carried over and the player was rebuilt for iOS.
+
+> **Disclaimer** – Not affiliated with, endorsed by, or sponsored by YouTube or Google. It uses
+> undocumented endpoints that can change at any time. Use it with your own account and at your
+> own risk.
+
+## Features
+
+- **Home, Discover, Collections, Search** tabs in the Apple Music layout, with the mini player as the
+  tab bar accessory (full pill, compact inline when the bar minimizes).
+- **Discover:** Explore, Charts, Moods & genres, New releases.
+- **Collections:** Library (playlists, albums, artists), Liked music, History.
+- **Detail pages** for playlists, albums and artists (top songs, discography, related artists, follow, radio, shuffle).
+- **Now Playing** modelled on Apple Music: artwork-tinted background, scrubber, system volume,
+  like, lyrics, AirPlay, queue (jump to / remove), shuffle and repeat.
+- **Background playback:** keeps going locked, advances through the queue, lock-screen / Control
+  Center / AirPods next-previous, native Now Playing card.
+- **Recovery:** web content termination, stuck streams and network changes bring playback back
+  to the same track and position; the last session is restored after a cold start.
+- **Account:** Google sign-in, brand-account switching, avatar in the navigation bar.
+- **Settings:** audio quality, content language, haptics, optional ad skipping (off by default).
+- **Localized** in English and French.
+
+## How it works
+
+```
+ SwiftUI screens ──commands──▶ WebPlayer ──JS──▶ music.youtube.com (hidden web view)
+        ▲                          │                         │
+        └────── PlaybackState ◀────┴──── page events ◀───────┘
 ```
 
-1. Dans Xcode : target `YTMSpike` ▸ *Signing & Capabilities* ▸ choisis ton Team.
-2. Branche un **iPhone réel** (le simulateur ne dit rien de fiable sur la suspension en arrière-plan).
-3. Run. Connecte-toi à YouTube Music dans la WebView (idéalement un compte Premium).
+- The **web view is the single source of truth** for playback and the queue. The native UI never
+  keeps its own player state: taps send commands to the page, and what is drawn is the
+  `PlaybackState` mirrored from the page's events and heartbeat.
+- **Everything else goes through the InnerTube API** (Home, Search, browse pages, library, ratings),
+  authenticated like the web client: Google cookies archived in the Keychain and `SAPISIDHASH`
+  request signing.
 
-Le build simulateur compile (`xcodebuild … -destination 'generic/platform=iOS Simulator'`), mais je n'ai
-**pas** lancé l'app : le pont JS → Swift et les sélecteurs de la page ne sont pas encore vérifiés.
+```
+Sources/
+  App/        entry point, environment, preferences, localization, assets
+  Auth/       cookie archive (Keychain), login, SAPISIDHASH, account switching
+  Core/       InnerTube client, models, parsers (adapted from Kaset macOS)
+  Playback/   WebPlayer, page scripts, state, Now Playing, audio session
+  Features/   Home, Discover, Collections, Search, Detail, Now Playing, Settings, Shell
+  Debug/      log and diagnostic screens
+Tests/        parsers (sanitized fixtures), auth, playback state
+docs/         plan, tracker, spike findings
+```
 
-## Ce que l'app mesure
+See [`docs/PLAN.md`](docs/PLAN.md), [`docs/TRACKER.md`](docs/TRACKER.md) and
+[`docs/spike-findings.md`](docs/spike-findings.md) for the design decisions and the evidence
+behind the playback approach.
 
-| Source | Signal |
-|---|---|
-| Heartbeat JS (5 s) | La page tourne-t-elle encore ? `vis=` donne la visibilité **réelle** vue par la page |
-| Ticker natif (5 s) | Le process app est-il suspendu ? (trou > 12 s) |
-| Événements `<video>` | `pause`, `ended`, `error`, `stalled`, `play` + changement de titre = enchaînement de piste |
-| `WEBCONTENT PROCESS TERMINATED` | iOS a tué le process de la page |
-| `AVAudioSession` | interruptions, changements de route |
-| Rapport | Résumé affiché au retour au premier plan, et ligne `[report]` dans le log |
+## Requirements
 
-Le log est écrit **ligne par ligne sur disque** (`Documents/spike-log.txt`) : il survit même si l'app est tuée.
-Récupération : bouton partage dans l'app, ou app Fichiers ▸ Sur mon iPhone ▸ YTM Spike.
+- Xcode 26 and an iOS 26 device (iPhone first)
+- [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`)
+- A YouTube Music account (Premium is not required)
 
-## Protocole de test
+## Build and run
 
-Pour chaque essai : lance une **playlist** (pas un seul titre), vérifie que ça joue, **verrouille l'iPhone**
-(ou passe sur l'écran d'accueil), attends **20 à 30 min**, puis note : le son a-t-il continué ? les pistes
-se sont-elles enchaînées ? le bouton suivant de l'écran verrouillé marche-t-il ?
+```bash
+git clone https://github.com/emoonadev/Kaset-iOS.git
+cd Kaset-iOS
+xcodegen generate
+open KasetiOS.xcodeproj
+```
 
-Change les réglages (⚙︎ *Réglages*, puis *Recharger* pour ceux de la première section) dans cet ordre :
+Select your team under **Signing & Capabilities**, choose your iPhone, and run.
 
-| # | UA desktop | Mentir visibilité | Relancer play() | WebView cachée 1×1 | Question |
-|---|---|---|---|---|---|
-| 1 | oui | non | non | non | Base : ça tient sans bidouille ? |
-| 2 | oui | non | oui | non | Un `play()` en entrant en arrière-plan suffit-il ? |
-| 3 | oui | oui | non | non | Empêcher la page de savoir qu'elle est cachée suffit-il ? |
-| 4 | oui | oui | oui | non | Les deux |
-| 5 | meilleur réglage de 1–4 | | | **oui** | Même chose avec la WebView cachée, comme Kaset |
-| 6 | non (UA mobile) | meilleur de 1–4 | | non | Le site mobile se comporte-t-il autrement ? |
+### Sideloading with a free Apple ID
 
-## Lire le résultat
+The app is meant to be sideloaded, not distributed through the App Store:
 
-- **Son continue + pistes changent** → le chemin WebView est viable, le portage vaut le coup.
-- **`pause` à l'entrée en arrière-plan, `vis=hidden`** → YouTube coupe sur la visibilité : essais 2–4.
-- **Trous JS mais son OK** → timers de la page throttlés : acceptable tant que la file avance côté YouTube,
-  mais la synchro d'état de Kaset devra le tolérer.
-- **Trous natifs** → l'app entière est suspendue : l'audio session n'est pas tenue, vérifie `[audio]` dans le log.
-- **`WEBCONTENT PROCESS TERMINATED`** → iOS tue la page : la WebView ne suffit pas.
+- A **free Apple ID** works, but the provisioning profile expires after **7 days** and you can
+  have a limited number of apps and App IDs; re-run from Xcode to renew it.
+- A paid developer account lifts these limits (profiles last a year).
+- Change the bundle identifier (`dev.emoona.kaset` in `project.yml`) to one you own.
+- Background audio uses the standard `audio` background mode; no special entitlement is needed.
+- CarPlay needs an entitlement that sideloaded builds cannot have, so it is not supported.
 
-## Si tout échoue (plan B, à ne creuser qu'après ce spike)
+### Tests
 
-1. Compte Premium vs non-Premium : YouTube réserve probablement la lecture écran verrouillé au Premium.
-2. Lecteur iframe/embed au lieu de la page complète.
-3. Flux audio récupérés via InnerTube et lus par `AVPlayer` : fonctionne en arrière-plan sans discussion, mais
-   casse la règle « WebView pour la lecture » de Kaset et le DRM, et dépend de tokens (PO token) fragiles.
+```bash
+xcodebuild test \
+  -project KasetiOS.xcodeproj -scheme KasetiOS \
+  -destination 'platform=iOS Simulator,name=iPhone 17'
+```
 
-## Limites connues
+Parser tests run against sanitized fixtures. Never commit cookies, tokens or captured
+personal responses; fixtures use placeholders only.
 
-- Sélecteurs `.next-button.ytmusic-player-bar` etc. repris de Kaset, non revalidés ici.
-- L'auto-confirmation du dialogue « Continuer ? » est un essai sans garantie (sélecteur supposé).
-- La connexion Google dans une WebView peut être refusée selon le compte ; sinon dis-le, il y aura un plan.
+## Known limitations
+
+- Playback depends on selectors and behaviour of the YouTube Music web page. Shuffle/repeat
+  state, queue jump/remove and "add to queue" are best effort and can break when the page changes.
+- Queue reordering is not implemented.
+- Podcasts, video mode, scrobbling and AI features of the macOS app are out of scope for v1.
+- Ad skipping is opt-in and may go against YouTube's terms of service.
+
+## Contributing
+
+Issues and pull requests are welcome. Before opening one, please read `docs/PLAN.md` for the
+ground rules: verify endpoints before writing parsers, keep the web view as the source of truth,
+and never log secrets.
+
+## Acknowledgements
+
+- [**Kaset for macOS**](https://github.com/sozercan/kaset) by Sertaç Özercan – the project this
+  one is inspired by and adapted from. Thank you.
+- [XcodeGen](https://github.com/yonaskolb/XcodeGen).
+
+## License
+
+[MIT](LICENSE). Portions adapted from Kaset for macOS are covered by its MIT license, reproduced
+in the same file.

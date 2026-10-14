@@ -155,6 +155,10 @@ enum PlayerScripts {
             return v === 'ALL' ? 'all' : (v === 'ONE' ? 'one' : 'off');
           };
 
+          \(AdDetectionScript.detection)
+          window.__kasetAdAutoSkip = \(AdSkip.isEnabled ? "true" : "false");
+          const adNow = () => { try { return !!isAdShowing(); } catch (e) { return false; } };
+
           let lastQueueKey = '';
           const state = (ev, withQueue) => {
             const m = media();
@@ -169,7 +173,7 @@ enum PlayerScripts {
               listId: new URLSearchParams(location.search).get('list'),
               title: meta.title, artist: meta.artist, album: meta.album, artwork: meta.artwork,
               canNext: enabled('next'), canPrevious: enabled('previous'),
-              shuffle: shuffleOn(), repeat: repeatMode(),
+              shuffle: shuffleOn(), repeat: repeatMode(), ad: adNow(),
               vis: realVis()
             };
             if (withQueue) {
@@ -204,6 +208,28 @@ enum PlayerScripts {
             lastBeat = now;
             post(Object.assign(state('hb', true), { kind: 'state', hb: true }));
           }, 1000);
+
+          // Optional ad skipping: when an ad is playing and the setting is on, press next (the
+          // page then moves past the ad). A fallback seeks the ad to its end. Rate limited so a
+          // wrong detection can never skip more than one item every few seconds.
+          let lastAdSkip = 0;
+          const skipAdIfNeeded = () => {
+            if (!window.__kasetAdAutoSkip || !adNow()) { return; }
+            const now = Date.now();
+            if (now - lastAdSkip < 4000) { return; }
+            lastAdSkip = now;
+            const skipButton = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button');
+            if (skipButton) { skipButton.click(); post({ kind: 'ad', via: 'skip-button' }); return; }
+            const result = click('next');
+            if (result === 'clicked') { post({ kind: 'ad', via: 'next' }); return; }
+            const m = media();
+            if (m && isFinite(m.duration) && m.duration > 0) {
+              m.currentTime = m.duration;
+              post({ kind: 'ad', via: 'seek-end' });
+            }
+          };
+          setInterval(skipAdIfNeeded, 500);
+          document.addEventListener('playing', skipAdIfNeeded, true);
 
           // Best effort: "Continue listening?" after a long session.
           setInterval(() => {

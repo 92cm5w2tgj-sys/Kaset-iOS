@@ -34,6 +34,8 @@ struct PlaybackState: Equatable, Sendable {
     var queue: [QueueEntry] = []
     /// Best effort, read from the page's player bar (selectors unverified on a device).
     var isShuffleEnabled = false
+    /// The page is currently playing an advertisement.
+    var isAd = false
     var repeatMode: RepeatMode = .off
     var visibility: String?
     var updatedAt = Date.distantPast
@@ -88,6 +90,7 @@ struct PlaybackState: Equatable, Sendable {
         if let canNext = message["canNext"] as? Bool { next.canGoNext = canNext }
         if let canPrevious = message["canPrevious"] as? Bool { next.canGoPrevious = canPrevious }
         if let vis = message["vis"] as? String { next.visibility = vis }
+        if let ad = message["ad"] as? Bool { next.isAd = ad }
         if let shuffle = message["shuffle"] as? Bool { next.isShuffleEnabled = shuffle }
         if let mode = message["repeat"] as? String { next.repeatMode = RepeatMode(rawValue: mode) ?? .off }
 

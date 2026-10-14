@@ -21,7 +21,11 @@ struct MiniPlayerView: View {
                         Text(state.title ?? "Not playing")
                             .font(.subheadline.weight(.medium))
                             .lineLimit(1)
-                        if self.placement != .inline, let artist = state.artist {
+                        if self.placement != .inline, state.isAd {
+                            Text("Advertisement")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        } else if self.placement != .inline, let artist = state.artist {
                             Text(artist)
                                 .font(.caption)
                                 .foregroundStyle(.secondary)

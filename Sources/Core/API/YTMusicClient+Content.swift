@@ -115,6 +115,14 @@ extension YTMusicClient {
         return ArtistParser.parseArtistDetail(data, artistId: id)
     }
 
+    /// Every song of an artist (the page behind "See all" on the top songs shelf).
+    func getArtistSongs(browseId: String, params: String?) async throws -> [Song] {
+        var body: [String: Any] = ["browseId": browseId]
+        if let params { body["params"] = params }
+        let data = try await self.request("browse", body: body, ttl: APICache.TTL.artist)
+        return ArtistParser.parseArtistSongs(data)
+    }
+
     // MARK: - Song metadata, lyrics, rating
 
     func getSong(videoId: String) async throws -> Song {

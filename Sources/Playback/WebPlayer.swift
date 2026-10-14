@@ -202,6 +202,12 @@ final class WebPlayer: NSObject {
         return true
     }
 
+    /// Pushes the ad auto-skip preference to the live page.
+    func applyAdSkipSetting() {
+        let js = "window.__kasetAdAutoSkip = \(AdSkip.isEnabled ? "true" : "false");"
+        self.webView.evaluateJavaScript(js, completionHandler: nil)
+    }
+
     /// Applies the stored audio-quality preference to the live page.
     func applyAudioQuality() {
         let script = PlaybackAudioQualityScripts.playbackAudioQualitySyncScript(quality: .current)
@@ -215,6 +221,8 @@ final class WebPlayer: NSObject {
                   let data = text.data(using: .utf8),
                   let message = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
             else { return }
+            if self.isShowingRestoredSession, !self.carriesTrack(message) { return }
+            self.isShowingRestoredSession = false
             self.state = self.state.applying(message)
             self.publishNowPlaying()
         }
@@ -249,8 +257,9 @@ final class WebPlayer: NSObject {
                 self.lastBeat = now
             }
             if self.isShowingRestoredSession {
-                // Keep the restored track on screen until the page actually has media.
-                guard message["paused"] is Bool else { return }
+                // Keep the restored track on screen until the page really has a track. The
+                // home page already has a (paused, empty) <video>, so `paused` alone proves nothing.
+                guard self.carriesTrack(message) else { return }
                 self.isShowingRestoredSession = false
             }
             let previousID = self.state.videoId
@@ -259,6 +268,9 @@ final class WebPlayer: NSObject {
             self.state = self.state.applying(message, at: now)
             self.persistSession(at: now)
             if event == "error" || event == "stalled" || event == "emptied" { self.scheduleRecoveryCheck(after: event) }
+            if message["ad"] as? Bool == true, event != "hb" || self.state.isAd == false {
+                self.log.log("ad", "ad playing (autoSkip=\(AdSkip.isEnabled))")
+            }
             if self.state.videoId != previousID {
                 self.log.log("track", "\(self.state.title ?? "?") — \(self.state.artist ?? "?") [\(self.state.videoId ?? "-")]")
             }
@@ -277,6 +289,8 @@ final class WebPlayer: NSObject {
             self.log.log("keepalive", "AudioContext \(message["state"] as? String ?? "?")")
         case "ms":
             self.log.log("remote", "mediaSession \(message["action"] as? String ?? "?") \(message["msg"] as? String ?? "")")
+        case "ad":
+            self.log.log("ad", "skip via \(message["via"] as? String ?? "?")")
         case "dialog":
             self.log.log("js", "dialog \(message["tag"] as? String ?? "?") clicked=\(message["clicked"] as? Bool ?? false)")
         case "playerr":
@@ -378,6 +392,13 @@ final class WebPlayer: NSObject {
                 self.recover(reason: "stuck after \(event)")
             }
         }
+    }
+
+    /// Whether a page `state` message describes an actual track.
+    private func carriesTrack(_ message: [String: Any]) -> Bool {
+        if let id = message["videoId"] as? String, !id.isEmpty { return true }
+        if let duration = message["duration"] as? Double, duration > 0 { return true }
+        return false
     }
 
     private func startPathMonitor() {

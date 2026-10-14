@@ -88,3 +88,15 @@ struct PlaybackStateExtrasTests {
         #expect(ContentLanguage.system.apiCode.count == 2)
     }
 }
+
+struct AdStateTests {
+    @Test func adFlagIsParsed() {
+        #expect(PlaybackState().applying(["paused": false, "ad": true]).isAd)
+        #expect(!PlaybackState().applying(["paused": false, "ad": false]).isAd)
+    }
+
+    @Test func adSkipIsOffByDefault() {
+        UserDefaults.standard.removeObject(forKey: AdSkip.storageKey)
+        #expect(!AdSkip.isEnabled)
+    }
+}
