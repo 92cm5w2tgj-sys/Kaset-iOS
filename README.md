@@ -35,7 +35,7 @@ carried over and the player was rebuilt for iOS.
   </tr>
   <tr>
     <td align="center"><sub><b>Home</b><br>Shelves, tab bar and mini player (guest mode)</sub></td>
-    <td align="center"><sub><b>Discover</b><br>Explore, Charts, Moods, New releases</sub></td>
+    <td align="center"><sub><b>Discover</b><br>Explore, Charts, Moods, New</sub></td>
     <td align="center"><sub><b>Now Playing</b><br>Artwork-tinted, Apple Music layout</sub></td>
   </tr>
 </table>
@@ -44,7 +44,7 @@ carried over and the player was rebuilt for iOS.
 
 - **Home, Discover, Collections, Search** tabs in the Apple Music layout, with the mini player as the
   tab bar accessory (full pill, compact inline when the bar minimizes).
-- **Discover:** Explore, Charts, Moods & genres, New releases.
+- **Discover:** Explore, Charts, Moods & genres, New.
 - **Collections:** Library (playlists, albums, artists), Liked music, History.
 - **Detail pages** for playlists, albums and artists (top songs, discography, related artists, follow, radio, shuffle).
 - **Now Playing** modelled on Apple Music: artwork-tinted background, scrubber, system volume,

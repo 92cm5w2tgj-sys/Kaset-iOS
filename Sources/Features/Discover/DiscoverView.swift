@@ -7,7 +7,7 @@ struct DiscoverView: View {
         case explore = "Explore"
         case charts = "Charts"
         case moods = "Moods"
-        case newReleases = "New releases"
+        case newReleases = "New"
 
         var id: String { self.rawValue }
 
