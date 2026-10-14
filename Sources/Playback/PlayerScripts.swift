@@ -446,7 +446,7 @@ enum PlayerScripts {
               // The unified log truncates long lines: emit long values in pieces.
               const chunk = (label, value) => {
                 const text = String(value === undefined ? 'undefined' : value).replace(/\\s+/g, ' ');
-                for (let i = 0; i < text.length && i < 2400; i += 500) {
+                for (let i = 0; i < text.length && i < 1500; i += 500) {
                   out.push(label + '[' + (i / 500) + ']: ' + text.slice(i, i + 500));
                 }
               };
@@ -497,8 +497,30 @@ enum PlayerScripts {
                   }
                   out.push('q.queue.members: ' + Array.from(all).slice(0, 90).join(','));
                 }
-                const app = document.querySelector('ytmusic-app');
-                if (app) { src('app.handleQueueUpdateCommand', app.handleQueueUpdateCommand); }
+                // The Polymer wrappers above are opaque proxies; the queue class's own methods and the
+                // APIs behind it are plain code, so read those.
+                if (qq && typeof qq === 'object') {
+                  src('q.queue.removeItem', qq.removeItem);
+                  src('q.queue.selectQueueItem', qq.selectQueueItem);
+                  src('q.queue.shuffle', qq.shuffle);
+                  src('q.queue.getItems', qq.getItems);
+                  const interesting2 = /move|reorder|insert|add|swap|splice|update|replace|set.*items/i;
+                  Object.keys(qq).filter((k) => /queueApi|serverQueueApi|store/i.test(k)).forEach((k) => {
+                    const obj = qq[k];
+                    if (!obj || typeof obj !== 'object') { out.push('q.queue.' + k + ': ' + typeof obj); return; }
+                    const names = new Set();
+                    let o = obj;
+                    for (let depth = 0; o && depth < 4 && o !== Object.prototype; depth += 1) {
+                      Object.getOwnPropertyNames(o).forEach((n) => names.add(n));
+                      o = Object.getPrototypeOf(o);
+                    }
+                    const list = Array.from(names);
+                    out.push('q.queue.' + k + ' ctor=' + (obj.constructor && obj.constructor.name) + ' members: ' + list.slice(0, 100).join(','));
+                    list.filter((n) => interesting2.test(n) && typeof obj[n] === 'function').slice(0, 6).forEach((n) => {
+                      src('q.queue.' + k + '.' + n, obj[n]);
+                    });
+                  });
+                }
               } else { out.push('no ytmusic-player-queue'); }
               return out.join('\\n');
             },
