@@ -60,27 +60,33 @@ struct NowPlayingView: View {
     var body: some View {
         let state = self.environment.player.state
 
-        VStack(spacing: 20) {
-            Capsule().fill(.secondary).frame(width: 36, height: 5).padding(.top, 8)
-            ArtworkView(url: state.artworkURL)
-                .aspectRatio(1, contentMode: .fit)
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .shadow(radius: 12, y: 6)
-                .scaleEffect(state.isPlaying ? 1 : 0.88)
-                .animation(.spring(duration: 0.4), value: state.isPlaying)
-                .padding(.horizontal, 28)
-                .padding(.top, 8)
+        ZStack {
+            self.background(state)
 
-            self.titleRow(state)
-            self.scrubber(state)
-            self.transport(state)
-            Spacer(minLength: 0)
-            self.footer(state)
+            VStack(spacing: 0) {
+                self.topBar
+                Spacer(minLength: 12)
+                ArtworkView(url: state.artworkURL)
+                    .aspectRatio(1, contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .shadow(color: .black.opacity(0.35), radius: 24, y: 14)
+                    .scaleEffect(state.isPlaying ? 1 : 0.9)
+                    .animation(.spring(duration: 0.45, bounce: 0.25), value: state.isPlaying)
+                    .padding(.horizontal, 12)
+                Spacer(minLength: 24)
+
+                VStack(spacing: 22) {
+                    self.titleRow(state)
+                    ScrubberView(state: state) { self.environment.player.seek(to: $0) }
+                    self.transport(state)
+                }
+                Spacer(minLength: 20)
+                self.footer(state)
+            }
+            .padding(.horizontal, 28)
+            .padding(.bottom, 12)
         }
-        .padding(.horizontal)
-        .padding(.bottom)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(.background)
+        .preferredColorScheme(.dark)
         .task(id: state.videoId) {
             let model = self.model ?? NowPlayingModel(client: self.environment.client)
             self.model = model
@@ -92,71 +98,123 @@ struct NowPlayingView: View {
         }
     }
 
-    private func titleRow(_ state: PlaybackState) -> some View {
+    /// Blurred, darkened artwork behind the controls (Apple Music style).
+    private func background(_ state: PlaybackState) -> some View {
+        ZStack {
+            Color.black
+            ArtworkView(url: state.artworkURL)
+                .scaledToFill()
+                .scaleEffect(1.6)
+                .blur(radius: 70)
+                .saturation(1.25)
+                .opacity(0.75)
+            LinearGradient(colors: [.black.opacity(0.1), .black.opacity(0.55)], startPoint: .top, endPoint: .bottom)
+        }
+        .ignoresSafeArea()
+        .animation(.easeInOut(duration: 0.6), value: state.artworkURL)
+    }
+
+    private var topBar: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(state.title ?? "Not playing").font(.title3.bold()).lineLimit(1)
-                Text(state.artist ?? "").foregroundStyle(.secondary).lineLimit(1)
+            Button { self.dismiss() } label: {
+                Image(systemName: "chevron.down")
+                    .font(.headline)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
+            .accessibilityLabel("Close")
             Spacer()
+        }
+        .foregroundStyle(.white.opacity(0.85))
+        .padding(.top, 4)
+    }
+
+    private func titleRow(_ state: PlaybackState) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(state.title ?? "Not playing")
+                    .font(.title2.weight(.bold))
+                    .lineLimit(1)
+                Text(state.artist ?? " ")
+                    .font(.title3)
+                    .foregroundStyle(.white.opacity(0.65))
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
             if let videoId = state.videoId, let model {
                 Button {
+                    Haptics.tap()
                     Task { await model.toggleLike(videoId: videoId) }
                 } label: {
                     Image(systemName: model.likeStatus == .like ? "heart.fill" : "heart")
-                        .font(.title2)
-                        .foregroundStyle(model.likeStatus == .like ? Color.pink : Color.primary)
+                        .font(.title3)
+                        .symbolEffect(.bounce, value: model.likeStatus)
+                        .foregroundStyle(model.likeStatus == .like ? Color.pink : Color.white)
+                        .frame(width: 44, height: 44)
+                        .glassEffect(.regular.interactive(), in: .circle)
                 }
+                .buttonStyle(.plain)
                 .accessibilityLabel(model.likeStatus == .like ? "Unlike" : "Like")
             }
         }
     }
 
-    private func scrubber(_ state: PlaybackState) -> some View {
-        ScrubberView(state: state) { self.environment.player.seek(to: $0) }
-    }
-
     private func transport(_ state: PlaybackState) -> some View {
-        HStack(spacing: 36) {
-            Button { self.environment.player.toggleShuffle() } label: {
-                Image(systemName: "shuffle").foregroundStyle(state.isShuffleEnabled ? Color.accentColor : Color.secondary)
-            }
-            .accessibilityLabel("Shuffle")
+        HStack {
+            Spacer()
             Button { Haptics.tap(); self.environment.player.previous() } label: {
-                Image(systemName: "backward.fill").font(.title)
+                Image(systemName: "backward.fill").font(.system(size: 34))
             }
             .disabled(!state.canGoPrevious)
             .accessibilityLabel("Previous")
+            Spacer()
             Button { Haptics.tap(); self.environment.player.togglePlayPause() } label: {
-                Image(systemName: state.isPlaying ? "pause.circle.fill" : "play.circle.fill").font(.system(size: 68))
+                Image(systemName: state.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 44))
+                    .contentTransition(.symbolEffect(.replace))
+                    .frame(width: 72, height: 72)
             }
             .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
+            Spacer()
             Button { Haptics.tap(); self.environment.player.next() } label: {
-                Image(systemName: "forward.fill").font(.title)
+                Image(systemName: "forward.fill").font(.system(size: 34))
             }
             .disabled(!state.canGoNext)
             .accessibilityLabel("Next")
-            Button { self.environment.player.cycleRepeat() } label: {
-                Image(systemName: state.repeatMode == .one ? "repeat.1" : "repeat")
-                    .foregroundStyle(state.repeatMode == .off ? Color.secondary : Color.accentColor)
-            }
-            .accessibilityLabel("Repeat")
+            Spacer()
         }
-        .font(.title3)
+        .buttonStyle(PressableButtonStyle())
+        .foregroundStyle(.white)
     }
 
     private func footer(_ state: PlaybackState) -> some View {
         HStack {
-            Button { self.isLyricsPresented = true } label: { Image(systemName: "quote.bubble") }
-                .accessibilityLabel("Lyrics")
-            Spacer()
-            AirPlayButton().frame(width: 36, height: 36)
-            Spacer()
-            Button { self.isQueuePresented = true } label: { Image(systemName: "list.bullet") }
-                .accessibilityLabel("Queue")
+            self.footerButton("shuffle", isOn: state.isShuffleEnabled, label: "Shuffle") {
+                self.environment.player.toggleShuffle()
+            }
+            self.footerButton(state.repeatMode == .one ? "repeat.1" : "repeat", isOn: state.repeatMode != .off, label: "Repeat") {
+                self.environment.player.cycleRepeat()
+            }
+            self.footerButton("quote.bubble", isOn: false, label: "Lyrics") { self.isLyricsPresented = true }
+            AirPlayButton()
+                .frame(width: 44, height: 44)
+                .frame(maxWidth: .infinity)
+            self.footerButton("list.bullet", isOn: false, label: "Queue") { self.isQueuePresented = true }
         }
-        .font(.title2)
-        .padding(.horizontal, 24)
+    }
+
+    private func footerButton(_ symbol: String, isOn: Bool, label: LocalizedStringKey, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.title3)
+                .foregroundStyle(isOn ? Color.black : Color.white.opacity(0.85))
+                .frame(width: 44, height: 44)
+                .background { if isOn { Circle().fill(.white.opacity(0.9)) } }
+                .frame(maxWidth: .infinity)
+        }
+        .buttonStyle(PressableButtonStyle())
+        .accessibilityLabel(label)
+        .accessibilityAddTraits(isOn ? .isSelected : [])
     }
 
     private static func format(_ seconds: TimeInterval) -> String {
@@ -185,15 +243,12 @@ struct ScrubberView: View {
                 VStack(spacing: 6) {
                     GeometryReader { proxy in
                         ZStack(alignment: .leading) {
-                            Capsule().fill(.quaternary)
-                            Capsule().fill(.primary).frame(width: proxy.size.width * fraction)
-                            Circle()
-                                .fill(.primary)
-                                .frame(width: self.dragFraction == nil ? 10 : 18, height: self.dragFraction == nil ? 10 : 18)
-                                .offset(x: max(0, proxy.size.width * fraction - (self.dragFraction == nil ? 5 : 9)))
-                                .animation(.easeOut(duration: 0.15), value: self.dragFraction == nil)
+                            Capsule().fill(.white.opacity(0.28))
+                            Capsule().fill(.white).frame(width: max(proxy.size.width * fraction, 0))
                         }
-                        .frame(height: 6)
+                        .frame(height: self.dragFraction == nil ? 6 : 12)
+                        .clipShape(Capsule())
+                        .animation(.spring(duration: 0.25), value: self.dragFraction == nil)
                         .frame(maxHeight: .infinity)
                         .contentShape(Rectangle())
                         .gesture(
@@ -219,7 +274,7 @@ struct ScrubberView: View {
                         Text("-" + Self.format(max(0, duration - position)))
                     }
                     .font(.caption.monospacedDigit())
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white.opacity(0.6))
                 }
             }
         }
@@ -254,11 +309,21 @@ struct ScrubberView: View {
     }
 }
 
+/// Subtle scale-down on press, used for the player's icon buttons.
+struct PressableButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed ? 0.88 : 1)
+            .opacity(configuration.isPressed ? 0.7 : 1)
+            .animation(.spring(duration: 0.2), value: configuration.isPressed)
+    }
+}
+
 struct AirPlayButton: UIViewRepresentable {
     func makeUIView(context _: Context) -> AVRoutePickerView {
         let view = AVRoutePickerView()
-        view.activeTintColor = .tintColor
-        view.tintColor = .label
+        view.activeTintColor = .white
+        view.tintColor = UIColor.white.withAlphaComponent(0.85)
         return view
     }
 

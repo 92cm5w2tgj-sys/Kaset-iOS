@@ -85,7 +85,7 @@ struct ArtistDetailView: View {
                         self.header(detail, model: model)
                         if !detail.songs.isEmpty {
                             VStack(alignment: .leading, spacing: 8) {
-                                Text(detail.songsSectionTitle ?? "Songs").font(.title3.bold()).padding(.horizontal)
+                                Text(detail.songsSectionTitle ?? "Songs").font(.title2.weight(.bold)).padding(.horizontal, 20)
                                 ForEach(detail.songs.prefix(10)) { song in
                                     TrackRow(song: song) {
                                         self.environment.player.play(videoId: song.videoId, playlistId: "RDAMVM\(song.videoId)")
@@ -107,9 +107,11 @@ struct ArtistDetailView: View {
     private func header(_ detail: ArtistDetail, model: ArtistDetailModel) -> some View {
         VStack(spacing: 10) {
             ArtworkView(url: detail.thumbnailURL ?? detail.artist.thumbnailURL)
-                .frame(width: 180, height: 180)
+                .frame(width: 200, height: 200)
                 .clipShape(Circle())
-            Text(detail.artist.name).font(.title.bold())
+                .shadow(color: .black.opacity(0.25), radius: 16, y: 8)
+                .padding(.top, 8)
+            Text(detail.artist.name).font(.largeTitle.weight(.bold))
             if let audience = detail.monthlyAudience {
                 Text(audience).font(.caption).foregroundStyle(.secondary)
             }
@@ -120,20 +122,20 @@ struct ArtistDetailView: View {
                     } label: {
                         Label("Radio", systemImage: "dot.radiowaves.left.and.right")
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(TintedActionButtonStyle())
                 } else if let first = detail.songs.first {
                     Button {
                         self.environment.player.play(videoId: first.videoId, playlistId: "RDAMVM\(first.videoId)")
                     } label: {
                         Label("Play", systemImage: "play.fill")
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(TintedActionButtonStyle())
                 }
                 if detail.channelId != nil {
                     Button(model.isSubscribed ? "Following" : "Follow") {
                         Task { await model.toggleSubscription() }
                     }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(TintedActionButtonStyle())
                 }
             }
         }

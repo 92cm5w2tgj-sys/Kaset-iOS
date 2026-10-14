@@ -107,29 +107,35 @@ struct PlaylistDetailView: View {
                 }
             }
             .listStyle(.plain)
+            .contentMargins(.bottom, 24, for: .scrollContent)
         }
     }
 
     private func header(_ detail: PlaylistDetail, model: PlaylistDetailModel) -> some View {
         VStack(spacing: 12) {
             ArtworkView(url: detail.thumbnailURL ?? self.thumbnailURL)
-                .frame(width: 220, height: 220)
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-            Text(detail.title).font(.title2.bold()).multilineTextAlignment(.center)
-            if let author = detail.author?.name {
-                Text(author).foregroundStyle(.secondary)
+                .frame(width: 250, height: 250)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .shadow(color: .black.opacity(0.25), radius: 18, y: 10)
+                .padding(.top, 8)
+            VStack(spacing: 4) {
+                Text(detail.title)
+                    .font(.title2.weight(.bold))
+                    .multilineTextAlignment(.center)
+                if let author = detail.author?.name {
+                    Text(author).font(.title3).foregroundStyle(.tint)
+                }
+                Text(detail.trackCountDisplay).font(.footnote).foregroundStyle(.secondary)
             }
-            Text(detail.trackCountDisplay).font(.caption).foregroundStyle(.secondary)
             HStack(spacing: 12) {
                 Button { self.playAll(model: model, shuffled: false) } label: {
                     Label("Play", systemImage: "play.fill").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.borderedProminent)
                 Button { self.playAll(model: model, shuffled: true) } label: {
                     Label("Shuffle", systemImage: "shuffle").frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
             }
+            .buttonStyle(TintedActionButtonStyle())
             HStack(spacing: 24) {
                 if detail.supportsLibraryToggle {
                     Menu("Library", systemImage: "plus") {
@@ -184,37 +190,64 @@ struct TrackRow: View {
             HStack(spacing: 12) {
                 if self.showsArtwork {
                     ArtworkView(url: self.song.thumbnailURL)
-                        .frame(width: 48, height: 48)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .frame(width: 52, height: 52)
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 } else if let index {
-                    Text("\(index)").font(.subheadline.monospacedDigit()).foregroundStyle(.secondary).frame(width: 28)
+                    Text("\(index)")
+                        .font(.body.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 30)
                 }
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(self.song.title).lineLimit(1)
+                    Text(self.song.title).font(.body).lineLimit(1)
                     if !self.song.artistsDisplay.isEmpty {
-                        Text(self.song.artistsDisplay).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        Text(self.song.artistsDisplay).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                     }
                 }
                 Spacer(minLength: 0)
                 if let duration = self.song.duration {
-                    Text(Self.format(duration)).font(.caption.monospacedDigit()).foregroundStyle(.secondary)
+                    Text(Self.format(duration)).font(.subheadline.monospacedDigit()).foregroundStyle(.secondary)
+                }
+                Menu {
+                    self.menuItems
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 32, height: 44)
+                        .contentShape(Rectangle())
                 }
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(!self.song.isPlayable)
-        .contextMenu {
-            Button("Play Next", systemImage: "text.insert") { self.environment.player.playNext(videoId: self.song.videoId) }
-            Button("Add to Queue", systemImage: "text.append") { self.environment.player.addToQueue(videoId: self.song.videoId) }
-            Button("Like", systemImage: "heart") {
-                Task { try? await self.environment.client.rateSong(videoId: self.song.videoId, rating: .like) }
-            }
+        .contextMenu { self.menuItems }
+    }
+
+    @ViewBuilder
+    private var menuItems: some View {
+        Button("Play Next", systemImage: "text.insert") { self.environment.player.playNext(videoId: self.song.videoId) }
+        Button("Add to Queue", systemImage: "text.append") { self.environment.player.addToQueue(videoId: self.song.videoId) }
+        Button("Like", systemImage: "heart") {
+            Task { try? await self.environment.client.rateSong(videoId: self.song.videoId, rating: .like) }
         }
     }
 
     private static func format(_ seconds: TimeInterval) -> String {
         let total = Int(seconds)
         return String(format: "%d:%02d", total / 60, total % 60)
+    }
+}
+
+/// Apple Music-style secondary action: tinted fill, tint label.
+struct TintedActionButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.headline)
+            .foregroundStyle(.tint)
+            .padding(.vertical, 14)
+            .background(.tint.opacity(configuration.isPressed ? 0.25 : 0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .scaleEffect(configuration.isPressed ? 0.98 : 1)
+            .animation(.spring(duration: 0.2), value: configuration.isPressed)
     }
 }

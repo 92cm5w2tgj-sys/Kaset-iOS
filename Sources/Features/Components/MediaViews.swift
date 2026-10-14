@@ -5,25 +5,35 @@ struct MediaCard: View {
     @Environment(AppEnvironment.self) private var environment
 
     let entity: MediaEntity
-    var width: CGFloat = 148
+    var width: CGFloat = 156
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             ArtworkView(url: self.entity.thumbnailURL)
                 .frame(width: self.width, height: self.width)
-                .clipShape(self.entity.isCircular ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: 8)))
+                .clipShape(self.entity.isCircular ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: 10, style: .continuous)))
+                .overlay {
+                    if self.entity.isCircular {
+                        Circle().strokeBorder(.primary.opacity(0.08))
+                    } else {
+                        RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(.primary.opacity(0.08))
+                    }
+                }
+                .shadow(color: .black.opacity(0.12), radius: 6, y: 3)
                 .overlay(alignment: .bottomTrailing) { self.quickPlay }
             Text(self.entity.title)
-                .font(.subheadline.weight(.medium))
+                .font(.subheadline.weight(.semibold))
                 .lineLimit(1)
+                .padding(.top, 2)
             if let subtitle = self.entity.subtitle {
                 Text(subtitle)
-                    .font(.caption)
+                    .font(.footnote)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
             }
         }
         .frame(width: self.width, alignment: .leading)
+        .multilineTextAlignment(.leading)
     }
 
     /// Playlists and albums open their page on tap; this plays them without opening it.
@@ -57,12 +67,12 @@ struct MediaRow: View {
     var body: some View {
         HStack(spacing: 12) {
             ArtworkView(url: self.entity.thumbnailURL)
-                .frame(width: 52, height: 52)
-                .clipShape(self.entity.isCircular ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: 6)))
+                .frame(width: 56, height: 56)
+                .clipShape(self.entity.isCircular ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: 8, style: .continuous)))
             VStack(alignment: .leading, spacing: 2) {
-                Text(self.entity.title).lineLimit(1)
+                Text(self.entity.title).font(.body).lineLimit(1)
                 if let subtitle = self.entity.subtitle {
-                    Text(subtitle).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    Text(subtitle).font(.subheadline).foregroundStyle(.secondary).lineLimit(1)
                 }
             }
             Spacer(minLength: 0)

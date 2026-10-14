@@ -84,7 +84,7 @@ struct BrowsePageView: View {
                 ContentUnavailableView(self.emptyMessage, systemImage: "tray")
             } else {
                 ScrollView {
-                    LazyVStack(alignment: .leading, spacing: 24) {
+                    LazyVStack(alignment: .leading, spacing: 32) {
                         ForEach(self.model.sections) { section in
                             ShelfView(title: section.title, entities: section.items.map(MediaEntity.init))
                                 .task { await self.model.loadMoreIfNeeded(after: section) }
@@ -109,25 +109,29 @@ struct ShelfView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if !self.title.isEmpty {
-                Text(self.title).font(.title3.bold()).padding(.horizontal)
+                Text(self.title)
+                    .font(.title2.weight(.bold))
+                    .padding(.horizontal, 20)
+                    .accessibilityAddTraits(.isHeader)
             }
             ScrollView(.horizontal, showsIndicators: false) {
-                LazyHStack(alignment: .top, spacing: 14) {
+                LazyHStack(alignment: .top, spacing: 16) {
                     ForEach(self.entities) { entity in
                         MediaActions(entity: entity) {
                             if case .mood = entity.target {
                                 Text(entity.title)
                                     .font(.subheadline.weight(.semibold))
-                                    .padding(.horizontal, 16)
-                                    .padding(.vertical, 12)
-                                    .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
+                                    .padding(.horizontal, 18)
+                                    .padding(.vertical, 14)
+                                    .glassEffect(.regular, in: .rect(cornerRadius: 14))
                             } else {
                                 MediaCard(entity: entity)
                             }
                         }
                     }
                 }
-                .padding(.horizontal)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 4)
             }
         }
     }
