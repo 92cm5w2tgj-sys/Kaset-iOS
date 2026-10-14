@@ -443,6 +443,13 @@ enum PlayerScripts {
             }),
             inspectQueue: () => {
               const out = [];
+              // The unified log truncates long lines: emit long values in pieces.
+              const chunk = (label, value) => {
+                const text = String(value === undefined ? 'undefined' : value).replace(/\\s+/g, ' ');
+                for (let i = 0; i < text.length && i < 2400; i += 500) {
+                  out.push(label + '[' + (i / 500) + ']: ' + text.slice(i, i + 500));
+                }
+              };
               const interesting = /reorder|move|drag|drop|swap|insert|remove|splice|queue|shuffle|index/i;
               const names = (o) => {
                 const set = new Set();
@@ -465,7 +472,34 @@ enum PlayerScripts {
                 const d = item.data || item.__data;
                 out.push('item.data keys: ' + (d ? Object.keys(d).join(',') : 'none'));
                 out.push('draggable=' + item.getAttribute('draggable') + ' handle=' + (item.querySelector('.drag-handle, [draggable], #drag-handle') ? 'yes' : 'no'));
+                try {
+                  out.push('item.data.canReorder=' + d.canReorder + ' playlistSetVideoId=' + (d.playlistSetVideoId ? 'yes' : 'no')
+                    + ' playlistEditParams=' + (d.playlistEditParams ? 'yes' : 'no'));
+                  chunk('item.data.queueNavigationEndpoint', JSON.stringify(d.queueNavigationEndpoint));
+                } catch (e) { out.push('item.data error ' + e); }
               } else { out.push('no queue item'); }
+
+              // What the queue component does on a drop, and what its queue object offers.
+              const q = document.querySelector('ytmusic-player-queue');
+              if (q) {
+                const src = (name, f) => { if (typeof f === 'function') { chunk(name, Function.prototype.toString.call(f)); } else { out.push(name + ': ' + typeof f); } };
+                src('q.onDrop', q.onDrop);
+                out.push('q.selectedQueueItemIndex=' + q.selectedQueueItemIndex);
+                const qq = q.queue;
+                out.push('q.queue: ' + typeof qq + ' ctor=' + (qq && qq.constructor && qq.constructor.name)
+                  + ' keys=' + Object.keys(qq || {}).slice(0, 40).join(','));
+                if (qq && typeof qq === 'object') {
+                  const all = new Set();
+                  let p = qq;
+                  for (let depth = 0; p && depth < 4 && p !== Object.prototype; depth += 1) {
+                    Object.getOwnPropertyNames(p).forEach((n) => all.add(n));
+                    p = Object.getPrototypeOf(p);
+                  }
+                  out.push('q.queue.members: ' + Array.from(all).slice(0, 90).join(','));
+                }
+                const app = document.querySelector('ytmusic-app');
+                if (app) { src('app.handleQueueUpdateCommand', app.handleQueueUpdateCommand); }
+              } else { out.push('no ytmusic-player-queue'); }
               return out.join('\\n');
             },
             shuffle: () => { const b = shuffleButton(); if (!b) { return 'missing:shuffle'; } b.click(); return 'clicked'; },
