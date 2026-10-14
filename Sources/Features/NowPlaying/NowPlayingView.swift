@@ -1,4 +1,5 @@
 import AVKit
+import MediaPlayer
 import Observation
 import SwiftUI
 
@@ -10,7 +11,10 @@ final class NowPlayingModel {
     private(set) var likeStatus: LikeStatus = .indifferent
     private(set) var lyrics: Lyrics?
     private(set) var isLoadingLyrics = false
+    /// Average colour of the current artwork; drives the background gradient.
+    private(set) var artworkColor: UIColor?
     private var loadedVideoId: String?
+    private var loadedArtworkURL: URL?
     private let client: YTMusicClient
 
     init(client: YTMusicClient) {
@@ -26,6 +30,36 @@ final class NowPlayingModel {
         if let song = try? await self.client.getSong(videoId: videoId), self.loadedVideoId == videoId {
             self.likeStatus = song.likeStatus ?? .indifferent
         }
+    }
+
+    func artworkChanged(to url: URL?) async {
+        guard url != self.loadedArtworkURL else { return }
+        self.loadedArtworkURL = url
+        guard let url else {
+            self.artworkColor = nil
+            return
+        }
+        guard let (data, _) = try? await URLSession.shared.data(from: url),
+              let color = Self.averageColor(of: data)
+        else { return }
+        guard self.loadedArtworkURL == url else { return }
+        self.artworkColor = color
+    }
+
+    /// Mean colour via a 1×1 redraw; cheap and stable for a background tint.
+    nonisolated private static func averageColor(of data: Data) -> UIColor? {
+        guard let image = UIImage(data: data)?.cgImage else { return nil }
+        var pixel = [UInt8](repeating: 0, count: 4)
+        let space = CGColorSpaceCreateDeviceRGB()
+        guard let context = CGContext(
+            data: &pixel, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4, space: space,
+            bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ) else { return nil }
+        context.interpolationQuality = .medium
+        context.draw(image, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        return UIColor(
+            red: CGFloat(pixel[0]) / 255, green: CGFloat(pixel[1]) / 255, blue: CGFloat(pixel[2]) / 255, alpha: 1
+        )
     }
 
     func toggleLike(videoId: String) async {
@@ -56,35 +90,70 @@ struct NowPlayingView: View {
     @State private var model: NowPlayingModel?
     @State private var isQueuePresented = false
     @State private var isLyricsPresented = false
+    @State private var dragOffset: CGFloat = 0
 
     var body: some View {
         let state = self.environment.player.state
 
-        ZStack {
-            self.background(state)
+        GeometryReader { proxy in
+            let width = proxy.size.width
+            let height = proxy.size.height + proxy.safeAreaInsets.top + proxy.safeAreaInsets.bottom
+            let margin = width * 0.08
+            let top = -proxy.safeAreaInsets.top
 
-            VStack(spacing: 0) {
-                self.topBar
-                Spacer(minLength: 12)
-                ArtworkView(url: state.artworkURL)
-                    .aspectRatio(1, contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-                    .shadow(color: .black.opacity(0.35), radius: 24, y: 14)
-                    .scaleEffect(state.isPlaying ? 1 : 0.9)
-                    .animation(.spring(duration: 0.45, bounce: 0.25), value: state.isPlaying)
-                    .padding(.horizontal, 12)
-                Spacer(minLength: 24)
+            ZStack {
+                self.background(state).ignoresSafeArea()
 
-                VStack(spacing: 22) {
+                // Positions follow Apple Music's Now Playing as fractions of the screen height.
+                ZStack {
+                    Capsule()
+                        .fill(.white.opacity(0.35))
+                        .frame(width: 42, height: 5)
+                        .position(x: width / 2, y: top + height * 0.081)
+                        .onTapGesture { self.dismiss() }
+
+                    ArtworkView(url: state.artworkURL)
+                        .aspectRatio(1, contentMode: .fit)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .shadow(color: .black.opacity(0.3), radius: 22, y: 12)
+                        .frame(width: width * (state.isPlaying ? 0.84 : 0.64))
+                        .animation(.spring(duration: 0.5, bounce: 0.3), value: state.isPlaying)
+                        .position(x: width / 2, y: top + height * (state.isPlaying ? 0.325 : 0.311))
+                        .animation(.spring(duration: 0.5, bounce: 0.3), value: state.isPlaying)
+
                     self.titleRow(state)
+                        .padding(.horizontal, margin)
+                        .position(x: width / 2, y: top + height * 0.5925)
+
                     ScrubberView(state: state) { self.environment.player.seek(to: $0) }
+                        .padding(.horizontal, margin)
+                        .position(x: width / 2, y: top + height * 0.672)
+
                     self.transport(state)
+                        .frame(width: width * 0.8)
+                        .position(x: width / 2, y: top + height * 0.7625)
+
+                    self.volumeRow
+                        .padding(.horizontal, margin)
+                        .position(x: width / 2, y: top + height * 0.865)
+
+                    self.footer(state)
+                        .frame(width: width * 0.8)
+                        .position(x: width / 2, y: top + height * 0.925)
                 }
-                Spacer(minLength: 20)
-                self.footer(state)
             }
-            .padding(.horizontal, 28)
-            .padding(.bottom, 12)
+            .offset(y: max(self.dragOffset, 0))
+            .gesture(
+                DragGesture()
+                    .onChanged { self.dragOffset = $0.translation.height }
+                    .onEnded { value in
+                        if value.translation.height > 140 || value.predictedEndTranslation.height > 400 {
+                            self.dismiss()
+                        } else {
+                            withAnimation(.spring(duration: 0.3)) { self.dragOffset = 0 }
+                        }
+                    }
+            )
         }
         .preferredColorScheme(.dark)
         .task(id: state.videoId) {
@@ -92,129 +161,138 @@ struct NowPlayingView: View {
             self.model = model
             await model.trackChanged(to: state.videoId)
         }
+        .task(id: state.artworkURL) {
+            let model = self.model ?? NowPlayingModel(client: self.environment.client)
+            self.model = model
+            await model.artworkChanged(to: state.artworkURL)
+        }
         .sheet(isPresented: self.$isQueuePresented) { QueueView() }
         .sheet(isPresented: self.$isLyricsPresented) {
             LyricsSheet(model: self.model, videoId: state.videoId)
         }
     }
 
-    /// Blurred, darkened artwork behind the controls (Apple Music style).
+    /// Vertical gradient from the artwork's average colour, darker towards the bottom.
     private func background(_ state: PlaybackState) -> some View {
-        ZStack {
-            Color.black
-            ArtworkView(url: state.artworkURL)
-                .scaledToFill()
-                .scaleEffect(1.6)
-                .blur(radius: 70)
-                .saturation(1.25)
-                .opacity(0.75)
-            LinearGradient(colors: [.black.opacity(0.1), .black.opacity(0.55)], startPoint: .top, endPoint: .bottom)
-        }
-        .ignoresSafeArea()
-        .animation(.easeInOut(duration: 0.6), value: state.artworkURL)
-    }
-
-    private var topBar: some View {
-        HStack {
-            Button { self.dismiss() } label: {
-                Image(systemName: "chevron.down")
-                    .font(.headline)
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-            }
-            .accessibilityLabel("Close")
-            Spacer()
-        }
-        .foregroundStyle(.white.opacity(0.85))
-        .padding(.top, 4)
+        let base = self.model?.artworkColor ?? UIColor(white: 0.25, alpha: 1)
+        var hue: CGFloat = 0, sat: CGFloat = 0, bri: CGFloat = 0, alpha: CGFloat = 0
+        base.getHue(&hue, saturation: &sat, brightness: &bri, alpha: &alpha)
+        let top = Color(hue: hue, saturation: min(sat * 1.05, 1), brightness: max(min(bri, 0.62), 0.32))
+        let bottom = Color(hue: hue, saturation: min(sat * 1.1, 1), brightness: max(min(bri * 0.55, 0.34), 0.14))
+        return LinearGradient(colors: [top, bottom], startPoint: .top, endPoint: .bottom)
+            .animation(.easeInOut(duration: 0.7), value: self.model?.artworkColor)
     }
 
     private func titleRow(_ state: PlaybackState) -> some View {
         HStack(alignment: .center, spacing: 12) {
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 1) {
                 Text(state.title ?? "Not playing")
-                    .font(.title2.weight(.bold))
+                    .font(.system(size: 22, weight: .semibold))
+                    .foregroundStyle(.white)
                     .lineLimit(1)
                 Text(state.artist ?? " ")
-                    .font(.title3)
-                    .foregroundStyle(.white.opacity(0.65))
+                    .font(.system(size: 22))
+                    .foregroundStyle(.white.opacity(0.6))
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
-            if let videoId = state.videoId, let model {
-                Button {
-                    Haptics.tap()
-                    Task { await model.toggleLike(videoId: videoId) }
-                } label: {
-                    Image(systemName: model.likeStatus == .like ? "heart.fill" : "heart")
-                        .font(.title3)
-                        .symbolEffect(.bounce, value: model.likeStatus)
-                        .foregroundStyle(model.likeStatus == .like ? Color.pink : Color.white)
-                        .frame(width: 44, height: 44)
-                        .glassEffect(.regular.interactive(), in: .circle)
+            Menu {
+                if let videoId = state.videoId, let model {
+                    Button(
+                        model.likeStatus == .like ? "Unlike" : "Like",
+                        systemImage: model.likeStatus == .like ? "heart.slash" : "heart"
+                    ) {
+                        Task { await model.toggleLike(videoId: videoId) }
+                    }
+                    Button("Play Next", systemImage: "text.insert") { self.environment.player.playNext(videoId: videoId) }
+                    if let url = URL(string: "https://music.youtube.com/watch?v=\(videoId)") {
+                        ShareLink(item: url) { Label("Share", systemImage: "square.and.arrow.up") }
+                    }
                 }
-                .buttonStyle(.plain)
-                .accessibilityLabel(model.likeStatus == .like ? "Unlike" : "Like")
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 20, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
             }
+            .accessibilityLabel("More")
         }
     }
 
     private func transport(_ state: PlaybackState) -> some View {
-        HStack {
-            Spacer()
+        HStack(spacing: 0) {
             Button { Haptics.tap(); self.environment.player.previous() } label: {
-                Image(systemName: "backward.fill").font(.system(size: 34))
+                Image(systemName: "backward.fill").font(.system(size: 40))
+                    .frame(maxWidth: .infinity)
             }
             .disabled(!state.canGoPrevious)
             .accessibilityLabel("Previous")
-            Spacer()
+
             Button { Haptics.tap(); self.environment.player.togglePlayPause() } label: {
                 Image(systemName: state.isPlaying ? "pause.fill" : "play.fill")
-                    .font(.system(size: 44))
+                    .font(.system(size: 52))
                     .contentTransition(.symbolEffect(.replace))
-                    .frame(width: 72, height: 72)
+                    .frame(maxWidth: .infinity)
             }
             .accessibilityLabel(state.isPlaying ? "Pause" : "Play")
-            Spacer()
+
             Button { Haptics.tap(); self.environment.player.next() } label: {
-                Image(systemName: "forward.fill").font(.system(size: 34))
+                Image(systemName: "forward.fill").font(.system(size: 40))
+                    .frame(maxWidth: .infinity)
             }
             .disabled(!state.canGoNext)
             .accessibilityLabel("Next")
-            Spacer()
         }
         .buttonStyle(PressableButtonStyle())
         .foregroundStyle(.white)
     }
 
+    /// System output volume. `MPVolumeView` is the only supported control for it.
+    private var volumeRow: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "speaker.fill")
+            SystemVolumeSlider().frame(height: 30)
+            Image(systemName: "speaker.wave.3.fill")
+        }
+        .font(.system(size: 14))
+        .foregroundStyle(.white.opacity(0.55))
+    }
+
     private func footer(_ state: PlaybackState) -> some View {
-        HStack {
-            self.footerButton("shuffle", isOn: state.isShuffleEnabled, label: "Shuffle") {
-                self.environment.player.toggleShuffle()
+        HStack(spacing: 0) {
+            Button { self.isLyricsPresented = true } label: {
+                Image(systemName: "quote.bubble")
+                    .font(.system(size: 22))
+                    .frame(maxWidth: .infinity, minHeight: 44)
             }
-            self.footerButton(state.repeatMode == .one ? "repeat.1" : "repeat", isOn: state.repeatMode != .off, label: "Repeat") {
-                self.environment.player.cycleRepeat()
-            }
-            self.footerButton("quote.bubble", isOn: false, label: "Lyrics") { self.isLyricsPresented = true }
+            .accessibilityLabel("Lyrics")
+
             AirPlayButton()
                 .frame(width: 44, height: 44)
                 .frame(maxWidth: .infinity)
-            self.footerButton("list.bullet", isOn: false, label: "Queue") { self.isQueuePresented = true }
-        }
-    }
 
-    private func footerButton(_ symbol: String, isOn: Bool, label: LocalizedStringKey, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .font(.title3)
-                .foregroundStyle(isOn ? Color.black : Color.white.opacity(0.85))
-                .frame(width: 44, height: 44)
-                .background { if isOn { Circle().fill(.white.opacity(0.9)) } }
-                .frame(maxWidth: .infinity)
+            Button { self.isQueuePresented = true } label: {
+                Image(systemName: "list.bullet")
+                    .font(.system(size: 22))
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .overlay(alignment: .topTrailing) {
+                        // Same cue as Apple Music: the queue icon carries a badge when
+                        // repeat / shuffle is on; both controls live inside the queue.
+                        if state.repeatMode != .off || state.isShuffleEnabled {
+                            Image(systemName: state.repeatMode == .one ? "repeat.1" : (state.repeatMode == .all ? "repeat" : "shuffle"))
+                                .font(.system(size: 10, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 22, height: 22)
+                                .background(.white.opacity(0.22), in: Circle())
+                                .offset(x: -14, y: -10)
+                        }
+                    }
+            }
+            .accessibilityLabel("Queue")
         }
         .buttonStyle(PressableButtonStyle())
-        .accessibilityLabel(label)
-        .accessibilityAddTraits(isOn ? .isSelected : [])
+        .foregroundStyle(.white.opacity(0.5))
     }
 
     private static func format(_ seconds: TimeInterval) -> String {
@@ -240,13 +318,13 @@ struct ScrubberView: View {
                 let position = self.displayedPosition(at: context.date, duration: duration)
                 let fraction = duration > 0 ? min(max(position / duration, 0), 1) : 0
 
-                VStack(spacing: 6) {
+                VStack(spacing: 8) {
                     GeometryReader { proxy in
                         ZStack(alignment: .leading) {
-                            Capsule().fill(.white.opacity(0.28))
-                            Capsule().fill(.white).frame(width: max(proxy.size.width * fraction, 0))
+                            Capsule().fill(.white.opacity(0.22))
+                            Capsule().fill(.white.opacity(0.72)).frame(width: max(proxy.size.width * fraction, 0))
                         }
-                        .frame(height: self.dragFraction == nil ? 6 : 12)
+                        .frame(height: self.dragFraction == nil ? 6 : 10)
                         .clipShape(Capsule())
                         .animation(.spring(duration: 0.25), value: self.dragFraction == nil)
                         .frame(maxHeight: .infinity)
@@ -266,15 +344,15 @@ struct ScrubberView: View {
                                 }
                         )
                     }
-                    .frame(height: 28)
+                    .frame(height: 16)
 
                     HStack {
                         Text(Self.format(position))
                         Spacer()
-                        Text("-" + Self.format(max(0, duration - position)))
+                        Text("\u{2212}" + Self.format(max(0, duration - position)))
                     }
-                    .font(.caption.monospacedDigit())
-                    .foregroundStyle(.white.opacity(0.6))
+                    .font(.system(size: 13, weight: .medium).monospacedDigit())
+                    .foregroundStyle(.white.opacity(0.5))
                 }
             }
         }
@@ -319,11 +397,22 @@ struct PressableButtonStyle: ButtonStyle {
     }
 }
 
+struct SystemVolumeSlider: UIViewRepresentable {
+    func makeUIView(context _: Context) -> MPVolumeView {
+        let view = MPVolumeView(frame: .zero)
+        view.showsRouteButton = false
+        view.tintColor = UIColor.white.withAlphaComponent(0.72)
+        return view
+    }
+
+    func updateUIView(_: MPVolumeView, context _: Context) {}
+}
+
 struct AirPlayButton: UIViewRepresentable {
     func makeUIView(context _: Context) -> AVRoutePickerView {
         let view = AVRoutePickerView()
         view.activeTintColor = .white
-        view.tintColor = UIColor.white.withAlphaComponent(0.85)
+        view.tintColor = UIColor.white.withAlphaComponent(0.5)
         return view
     }
 

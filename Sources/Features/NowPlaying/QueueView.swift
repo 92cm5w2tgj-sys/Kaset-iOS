@@ -45,7 +45,23 @@ struct QueueView: View {
             }
             .navigationTitle("Up Next")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { self.dismiss() } } }
+            .toolbar {
+                ToolbarItemGroup(placement: .topBarLeading) {
+                    let state = self.environment.player.state
+                    Button { self.environment.player.toggleShuffle() } label: {
+                        Image(systemName: "shuffle")
+                            .symbolVariant(state.isShuffleEnabled ? .fill : .none)
+                            .foregroundStyle(state.isShuffleEnabled ? Color.accentColor : Color.secondary)
+                    }
+                    .accessibilityLabel("Shuffle")
+                    Button { self.environment.player.cycleRepeat() } label: {
+                        Image(systemName: state.repeatMode == .one ? "repeat.1" : "repeat")
+                            .foregroundStyle(state.repeatMode == .off ? Color.secondary : Color.accentColor)
+                    }
+                    .accessibilityLabel("Repeat")
+                }
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { self.dismiss() } }
+            }
         }
         .presentationDetents([.medium, .large])
     }
