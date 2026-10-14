@@ -37,7 +37,7 @@ Reference app: `~/Desktop/Developer/kaset` (see *Reference* in the plan)
 |---|---|---|---|---|
 | K0 | Plan, decisions | ✅ | (this commit) | 2026-10-14 |
 | K1 | Foundations | 🟦 | 70f5a43 | |
-| K2 | Auth | ⬜ | | |
+| K2 | Auth | 🟦 | aa7d884 | |
 | K3 | Core API | ⬜ | | |
 | K4 | Playback engine | ⬜ | | |
 | K5 | App shell | ⬜ | | |
@@ -67,3 +67,4 @@ Reference app: `~/Desktop/Developer/kaset` (see *Reference* in the plan)
 |---|---|---|
 | 2026-10-14 | K0 | Direction changed: the spike becomes the app (`Kaset-iOS`, renamed from `YoutubeMusic Spik`). Plan and tracker moved here and re-planned (K1–K12) with the already-decided UI. kaset `feat/ios-port` frozen as reference (S1 ✅, S2 ✅, S3–S5 🟦 never confirmed). |
 | 2026-10-14 | K1 | Project renamed `KasetiOS` (bundle `dev.emoona.kaset`, iOS 26, Swift 6 builds clean), `App/` + `Debug/` layout, `AppEnvironment` owns the lab player (hidden 1×1 host while the lab is closed), test target green on iPhone 17 simulator (iOS 26.2). Awaiting device verification. |
+| 2026-10-14 | K2 | `Auth/`: `AuthCookies` (allowlist, SAPISID selection, `SAPISIDHASH`, plist archive), `CookieVault` (Keychain AfterFirstUnlockThisDeviceOnly), `AuthStore` (restore at launch, debounced re-archive on cookie change, sign-out wipes vault + jar + website data), `LoginView`. Kaset's restore-policy/transaction machinery deliberately not copied (single blob). Root view has a sign in/out row. 11 tests green. Awaiting device verification (K1 + K2). |
