@@ -353,20 +353,56 @@ enum PlayerScripts {
               }, 100);
               return 'menu-opened';
             },
-            // Awaitable variant used by queue reordering: resolves once the queue shrank.
+            // Awaitable removal used by queue editing: opens the entry's own menu, presses
+            // "Remove from queue" and resolves once the queue shrank. On failure the result
+            // carries what was found, so the app can show *why*.
             removeQueueIndexAsync: (i) => new Promise((resolve) => {
               const items = Array.from(document.querySelectorAll(QUEUE_ITEMS));
               const before = items.length;
               const el = items[i];
-              if (!el) { return resolve('missing:queue-item'); }
-              const menuButton = el.querySelector('ytmusic-menu-renderer button, ytmusic-menu-renderer tp-yt-paper-icon-button');
-              if (!menuButton) { return resolve('missing:menu'); }
+              if (!el) { return resolve('missing:queue-item(' + i + '/' + before + ')'); }
+
+              const describe = (n) => n ? (n.tagName.toLowerCase() + (n.className ? '.' + String(n.className).split(' ').join('.') : '')) : 'none';
+              const candidates = [
+                'ytmusic-menu-renderer button',
+                'ytmusic-menu-renderer tp-yt-paper-icon-button',
+                'ytmusic-menu-renderer yt-icon-button',
+                'ytmusic-menu-renderer',
+                '[aria-label*="menu" i]',
+                '[aria-label*="action" i]',
+                '.menu button',
+                '.menu'
+              ];
+              let menuButton = null;
+              for (const sel of candidates) {
+                menuButton = el.querySelector(sel);
+                if (menuButton) { break; }
+              }
+              if (!menuButton) {
+                return resolve('missing:menu in ' + describe(el) + ' children=' +
+                  Array.from(el.children).map(describe).join(',').slice(0, 140));
+              }
+              // Menus can be hidden until hover/selection; make the row "active" first.
+              try { el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true })); } catch (e) {}
               menuButton.click();
+
+              const isRemoveEntry = (e) => {
+                try {
+                  const d = e.data || e.__data || null;
+                  if (d && JSON.stringify(d).indexOf('removeFromQueue') !== -1) { return true; }
+                } catch (err) {}
+                return /remove from queue|retirer de la file|remove|supprimer|retirer|quitar|entfernen/i.test(e.textContent || '');
+              };
+
               let tries = 0;
               const poll = setInterval(() => {
                 tries += 1;
-                const entries = Array.from(document.querySelectorAll('ytmusic-menu-popup-renderer ytmusic-menu-service-item-renderer'));
-                const target = entries.find((e) => /remove from queue|retirer de la file|remove/i.test(e.textContent || ''));
+                const entries = Array.from(document.querySelectorAll(
+                  'ytmusic-menu-popup-renderer ytmusic-menu-service-item-renderer, '
+                  + 'tp-yt-paper-listbox ytmusic-menu-service-item-renderer, '
+                  + 'ytmusic-menu-service-item-renderer'
+                ));
+                const target = entries.find(isRemoveEntry);
                 if (target) {
                   clearInterval(poll);
                   target.click();
@@ -378,13 +414,14 @@ enum PlayerScripts {
                       resolve('removed');
                     } else if (checks > 30) {
                       clearInterval(verify);
-                      resolve('readback-timeout');
+                      resolve('readback-timeout(' + before + ')');
                     }
                   }, 100);
                 } else if (tries > 25) {
                   clearInterval(poll);
                   try { document.body.click(); } catch (e) {}
-                  resolve('menu-timeout');
+                  resolve('menu-timeout entries=[' +
+                    entries.map((e) => (e.textContent || '').trim().slice(0, 18)).join('|').slice(0, 120) + ']');
                 }
               }, 100);
             }),

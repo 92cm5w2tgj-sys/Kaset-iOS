@@ -147,7 +147,14 @@ final class WebPlayer: NSObject {
 
     /// Jumps to / removes an entry of the page's queue by its position.
     func playQueueEntry(at index: Int) { self.command("playQueueIndex", argument: String(index)) }
-    func removeQueueEntry(at index: Int) { self.command("removeQueueIndex", argument: String(index)) }
+    func removeQueueEntry(at index: Int) {
+        Task {
+            if let reason = await self.removeQueueEntryAndWait(at: index) {
+                self.postNotice("Couldn't remove from the queue (\(reason.prefix(90)))")
+            }
+            self.refreshState()
+        }
+    }
 
     func toggleShuffle() { self.command("shuffle") }
     func cycleRepeat() { self.command("repeat") }
@@ -233,13 +240,14 @@ final class WebPlayer: NSObject {
         return false
     }
 
-    private func removeQueueEntryAndWait(at index: Int) async -> Bool {
+    /// Returns `nil` on success, or what the page reported.
+    private func removeQueueEntryAndWait(at index: Int) async -> String? {
         let js = "return await window.__kaset.removeQueueIndexAsync(index);"
-        let result = try? await self.webView.callAsyncJavaScript(
+        let result = (try? await self.webView.callAsyncJavaScript(
             js, arguments: ["index": index], in: nil, contentWorld: .page
-        ) as? String
-        self.log.log("queue", "remove[\(index)] → \(result ?? "nil")")
-        return result == "removed"
+        ) as? String) ?? "no-result"
+        self.log.log("queue", "remove[\(index)] → \(result)")
+        return result == "removed" ? nil : result
     }
 
     /// Moves an Up Next entry. The page exposes no reorder primitive, so the affected prefix of
@@ -280,9 +288,9 @@ final class WebPlayer: NSObject {
 
         // Remove back to front so earlier indices stay valid.
         for index in stride(from: last, through: first, by: -1) {
-            guard await self.removeQueueEntryAndWait(at: index) else {
-                self.log.log("queue", "reorder aborted while removing index \(index)")
-                self.postNotice("Reorder stopped: couldn't remove an entry")
+            if let reason = await self.removeQueueEntryAndWait(at: index) {
+                self.log.log("queue", "reorder aborted while removing index \(index): \(reason)")
+                self.postNotice("Reorder stopped: couldn't remove an entry (\(reason.prefix(90)))")
                 self.refreshState()
                 return
             }
