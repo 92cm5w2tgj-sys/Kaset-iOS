@@ -45,7 +45,9 @@ final class WebPlayer: NSObject {
     @ObservationIgnored private var lastBeat: Date?
     @ObservationIgnored private var lastRemoteCommand = Date.distantPast
     @ObservationIgnored private var queueAttempt = 0
-    @ObservationIgnored private var pendingQueueResults: [Int: CheckedContinuation<Bool, Never>] = [:]
+    @ObservationIgnored private var pendingQueueResults: [Int: CheckedContinuation<(success: Bool, reason: String), Never>] = [:]
+    /// Remaining automatic retries for user-initiated queue operations, by video id.
+    @ObservationIgnored private var queueRetries: [String: Int] = [:]
     @ObservationIgnored private var lastRecovery = Date.distantPast
     @ObservationIgnored private var lastSavedAt = Date.distantPast
     @ObservationIgnored private var lastEvent = ""
@@ -189,11 +191,17 @@ final class WebPlayer: NSObject {
             return true
         }
         self.queueAttempt += 1
+        self.queueRetries[videoId] = 2
         let script = PlayerScripts.playNext(videoId: videoId, afterVideoId: source, attempt: self.queueAttempt)
         self.log.log("cmd", "playNext \(videoId) after \(source)")
         self.webView.evaluateJavaScript(script, completionHandler: nil)
         return true
     }
+
+    private static let transientQueueFailures: Set<String> = [
+        "play-next-item-not-found", "add-to-queue-item-not-found", "menu-timeout",
+        "player-bar-menu-not-found", "queue-source-not-ready", "menu-source-mismatch",
+    ]
 
     private func postNotice(_ text: String) {
         self.queueNotice = text
@@ -203,19 +211,26 @@ final class WebPlayer: NSObject {
         }
     }
 
-    /// `playNext` that waits for the page's readback (or a timeout).
+    /// `playNext` that waits for the page's readback, retrying transient menu failures.
     private func playNextAndWait(videoId: String, after sourceVideoId: String) async -> Bool {
-        self.queueAttempt += 1
-        let attempt = self.queueAttempt
-        let script = PlayerScripts.playNext(videoId: videoId, afterVideoId: sourceVideoId, attempt: attempt)
-        return await withCheckedContinuation { continuation in
-            self.pendingQueueResults[attempt] = continuation
-            self.webView.evaluateJavaScript(script, completionHandler: nil)
-            Task { [weak self] in
-                try? await Task.sleep(for: .seconds(12))
-                self?.pendingQueueResults.removeValue(forKey: attempt)?.resume(returning: false)
+        for attempt in 1 ... 3 {
+            self.queueAttempt += 1
+            let id = self.queueAttempt
+            let script = PlayerScripts.playNext(videoId: videoId, afterVideoId: sourceVideoId, attempt: id)
+            let result = await withCheckedContinuation { (continuation: CheckedContinuation<(success: Bool, reason: String), Never>) in
+                self.pendingQueueResults[id] = continuation
+                self.webView.evaluateJavaScript(script, completionHandler: nil)
+                Task { [weak self] in
+                    try? await Task.sleep(for: .seconds(12))
+                    self?.pendingQueueResults.removeValue(forKey: id)?.resume(returning: (false, "timeout"))
+                }
             }
+            if result.success { return true }
+            self.log.log("queue", "re-insert \(videoId) attempt \(attempt): \(result.reason)")
+            guard Self.transientQueueFailures.contains(result.reason) else { return false }
+            try? await Task.sleep(for: .milliseconds(600))
         }
+        return false
     }
 
     private func removeQueueEntryAndWait(at index: Int) async -> Bool {
@@ -291,6 +306,7 @@ final class WebPlayer: NSObject {
             self.play(videoId: videoId, playlistId: "RDAMVM\(videoId)")
             return true
         }
+        self.queueRetries[videoId] = 2
         self.log.log("cmd", "addToQueue \(videoId)")
         self.webView.evaluateJavaScript(PlayerScripts.addToQueue(videoId: videoId), completionHandler: nil)
         return true
@@ -377,7 +393,9 @@ final class WebPlayer: NSObject {
             if let attempt = message["attemptGeneration"] as? Int,
                let continuation = self.pendingQueueResults.removeValue(forKey: attempt)
             {
-                continuation.resume(returning: message["success"] as? Bool ?? false)
+                continuation.resume(returning: (
+                    message["success"] as? Bool ?? false, message["reason"] as? String ?? ""
+                ))
             }
             let id = message["videoId"] as? String ?? ""
             let success = message["success"] as? Bool ?? false
@@ -385,6 +403,28 @@ final class WebPlayer: NSObject {
             self.lastQueueResult = (id, success, reason)
             self.log.log("queue", "\(message["op"] as? String ?? "playNext") \(id) success=\(success) \(reason)")
             let isAdd = (message["op"] as? String) == "add"
+            // The player-bar menu is populated lazily: the first attempt can find it without the
+            // entry yet. Retry once or twice before telling the user.
+            if !success, Self.transientQueueFailures.contains(reason),
+               self.queueAttempt == (message["attemptGeneration"] as? Int ?? -1) || isAdd,
+               let left = self.queueRetries[id], left > 0
+            {
+                self.queueRetries[id] = left - 1
+                self.log.log("queue", "retrying \(id) after \(reason) (\(left - 1) left)")
+                Task { [weak self] in
+                    try? await Task.sleep(for: .milliseconds(600))
+                    guard let self else { return }
+                    if isAdd {
+                        self.webView.evaluateJavaScript(PlayerScripts.addToQueue(videoId: id), completionHandler: nil)
+                    } else if let source = self.state.videoId {
+                        self.queueAttempt += 1
+                        let script = PlayerScripts.playNext(videoId: id, afterVideoId: source, attempt: self.queueAttempt)
+                        self.webView.evaluateJavaScript(script, completionHandler: nil)
+                    }
+                }
+                return
+            }
+            self.queueRetries[id] = nil
             if success {
                 self.postNotice(isAdd ? "Added to the queue" : "Playing next")
             } else {

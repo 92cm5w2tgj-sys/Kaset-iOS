@@ -72,6 +72,7 @@ struct QueueView: View {
                 ToolbarItem(placement: .confirmationAction) { Button("Done") { self.dismiss() } }
             }
         }
+        .queueNoticeBanner()
         .presentationDetents([.medium, .large])
     }
 

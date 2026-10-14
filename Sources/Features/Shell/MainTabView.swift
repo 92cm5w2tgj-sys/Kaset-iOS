@@ -27,18 +27,7 @@ struct MainTabView: View {
                 SearchView()
             }
         }
-        .overlay(alignment: .top) {
-            if let notice = self.environment.player.queueNotice {
-                Text(notice)
-                    .font(.footnote.weight(.semibold))
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 10)
-                    .glassEffect(.regular, in: .capsule)
-                    .padding(.top, 8)
-                    .transition(.move(edge: .top).combined(with: .opacity))
-            }
-        }
-        .animation(.spring(duration: 0.35), value: self.environment.player.queueNotice)
+        .queueNoticeBanner()
         .tabBarMinimizeBehavior(.onScrollDown)
         .tabViewBottomAccessory {
             MiniPlayerView(

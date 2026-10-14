@@ -170,6 +170,7 @@ struct NowPlayingView: View {
             )
         }
         .preferredColorScheme(.dark)
+        .queueNoticeBanner()
         .task(id: state.videoId) {
             let model = self.model ?? NowPlayingModel(client: self.environment.client)
             self.model = model
