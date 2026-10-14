@@ -47,7 +47,7 @@ Reference app: `~/Desktop/Developer/kaset` (see *Reference* in the plan)
 | K9 | Now Playing and Queue | 🟦 | 99cfc1e | |
 | K10 | Settings, account, polish | 🟦 | 99cfc1e | |
 | K11 | Hardening | 🟦 | 99cfc1e | |
-| K12 | Docs, distribution | ⬜ | | |
+| K12 | Docs, distribution | 🟦 | c1b177b | |
 
 ## Findings carried over from the abandoned port (kaset `feat/ios-port`, S1–S5)
 
@@ -80,3 +80,4 @@ Reference app: `~/Desktop/Developer/kaset` (see *Reference* in the plan)
 | 2026-10-14 | K10 | Settings: account list + switch (loads the account's sign-in URL in a shared-cookie web view, then API `onBehalfOfUser`, then player reload — unverified), audio quality (kaset's page override script copied), content language (`hl`), haptics. French string catalog, accessibility labels on controls, system materials only. Dynamic Type / VoiceOver pass is the user's. |
 | 2026-10-14 | K11 | Recovery: WebContent termination, `error`/`stalled`/`emptied` stuck for 8 s, network back → reload same track/list/position (rate limited 15 s); last session saved every ≥5 s and shown in the mini player after a cold start, play resumes it at its position. **Not done here**: the ≥60 min locked run with battery delta is a device measurement; expired-stream behaviour is covered by the stuck-stream path but untested. |
 | 2026-10-14 | K7–K11 | Built in one batch at the user's request; one commit for all five (the steps share the client, entity routing and page script), each row marked 🟦 individually. 133 tests green. |
+| 2026-10-14 | K12 | README (open-source style, credits Kaset macOS), LICENSE (MIT + upstream notice), CI workflow (`xcodegen` + `xcodebuild test` on a macOS 26 runner — not run yet), kaset app icon, accent colour from the icon. Same commit also: restore fix (home page's empty `<video>` used to overwrite the restored session), ad detection + opt-in skip, navigation-bar avatar, artist page from Now Playing with a kaset-style artist screen. |
