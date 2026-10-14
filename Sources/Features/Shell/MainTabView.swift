@@ -10,7 +10,6 @@ struct MainTabView: View {
     @Environment(AppEnvironment.self) private var environment
     @Namespace private var nowPlayingNamespace
     @State private var selection: Tab = .home
-    @State private var isNowPlayingPresented = false
 
     var body: some View {
         TabView(selection: self.$selection) {
@@ -32,10 +31,10 @@ struct MainTabView: View {
         .tabViewBottomAccessory {
             MiniPlayerView(
                 namespace: self.nowPlayingNamespace,
-                onTap: { self.isNowPlayingPresented = true }
+                onTap: { self.environment.isNowPlayingPresented = true }
             )
         }
-        .fullScreenCover(isPresented: self.$isNowPlayingPresented) {
+        .fullScreenCover(isPresented: Bindable(self.environment).isNowPlayingPresented) {
             NowPlayingView()
                 .navigationTransition(.zoom(sourceID: "miniPlayer", in: self.nowPlayingNamespace))
         }

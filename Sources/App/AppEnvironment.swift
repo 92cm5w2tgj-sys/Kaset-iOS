@@ -13,6 +13,9 @@ final class AppEnvironment {
     /// Photo of the selected account, for the navigation bar button.
     private(set) var accountAvatarURL: URL?
 
+    /// Full-screen Now Playing. Lives here so any screen can open it (e.g. cover quick-play).
+    var isNowPlayingPresented = false
+
     var isPlaybackDebugPresented = false
     var isLoginPresented = false
 
@@ -26,7 +29,8 @@ final class AppEnvironment {
 
     /// Plays an entity without opening its page. Playlists use their id as the queue; an album's
     /// playable `OLAK…` id is only known from its detail, so that is fetched first.
-    func playEntity(_ entity: MediaEntity) {
+    func playEntity(_ entity: MediaEntity, opensNowPlaying: Bool = true) {
+        if opensNowPlaying, entity.target.isPlayableCollection { self.isNowPlayingPresented = true }
         switch entity.target {
         case let .song(videoId):
             self.player.play(videoId: videoId, playlistId: "RDAMVM\(videoId)")

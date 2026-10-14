@@ -10,6 +10,14 @@ struct MediaEntity: Identifiable, Hashable {
         case artist(id: String)
         case mood(browseId: String, params: String?)
         case unsupported
+
+        /// Playlists and albums: playing one from a cover starts a queue worth showing.
+        var isPlayableCollection: Bool {
+            switch self {
+            case .playlist, .album: true
+            default: false
+            }
+        }
     }
 
     let id: String
