@@ -36,9 +36,9 @@ Reference app: `~/Desktop/Developer/kaset` (see *Reference* in the plan)
 | ID | Step | Status | Commit | Confirmed |
 |---|---|---|---|---|
 | K0 | Plan, decisions | ✅ | (this commit) | 2026-10-14 |
-| K1 | Foundations | 🟦 | 70f5a43 | |
-| K2 | Auth | 🟦 | aa7d884 | |
-| K3 | Core API | 🟦 | e3e5f3b | |
+| K1 | Foundations | ✅ | 70f5a43 | 2026-10-14 |
+| K2 | Auth | ✅ | aa7d884 | 2026-10-14 |
+| K3 | Core API | ✅ | e3e5f3b | 2026-10-14 |
 | K4 | Playback engine | ⬜ | | |
 | K5 | App shell | ⬜ | | |
 | K6 | Home and Search | ⬜ | | |
@@ -69,3 +69,4 @@ Reference app: `~/Desktop/Developer/kaset` (see *Reference* in the plan)
 | 2026-10-14 | K1 | Project renamed `KasetiOS` (bundle `dev.emoona.kaset`, iOS 26, Swift 6 builds clean), `App/` + `Debug/` layout, `AppEnvironment` owns the lab player (hidden 1×1 host while the lab is closed), test target green on iPhone 17 simulator (iOS 26.2). Awaiting device verification. |
 | 2026-10-14 | K2 | `Auth/`: `AuthCookies` (allowlist, SAPISID selection, `SAPISIDHASH`, plist archive), `CookieVault` (Keychain AfterFirstUnlockThisDeviceOnly), `AuthStore` (restore at launch, debounced re-archive on cookie change, sign-out wipes vault + jar + website data), `LoginView`. Kaset's restore-policy/transaction machinery deliberately not copied (single blob). Root view has a sign in/out row. 11 tests green. Awaiting device verification (K1 + K2). |
 | 2026-10-14 | K3 | `Core/`: models + Home/Search/Suggestions parsers copied from kaset (type names kept), `YTMusicClient` trimmed to browse pages (+continuations), search (+continuation), suggestions; auth via `AuthStore` (SAPISIDHASH, 401/403 → `authExpired` + `sessionExpired()`); API key resolved from the page. Checkpoint: kaset's Home/Search/Suggestions/ParsingHelpers/ResponseTreeSearch tests + fixtures ported, 119 tests green. `Debug/APIDebugView` shows live Home + Search. Not run against the live API yet (needs the device session). |
+| 2026-10-14 | K1–K3 | Confirmed on device by the user. Next: K4 (playback engine). |
