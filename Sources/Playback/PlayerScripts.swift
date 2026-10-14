@@ -333,6 +333,41 @@ enum PlayerScripts {
               }, 100);
               return 'menu-opened';
             },
+            // Awaitable variant used by queue reordering: resolves once the queue shrank.
+            removeQueueIndexAsync: (i) => new Promise((resolve) => {
+              const items = Array.from(document.querySelectorAll('ytmusic-player-queue-item'));
+              const before = items.length;
+              const el = items[i];
+              if (!el) { return resolve('missing:queue-item'); }
+              const menuButton = el.querySelector('ytmusic-menu-renderer button, ytmusic-menu-renderer tp-yt-paper-icon-button');
+              if (!menuButton) { return resolve('missing:menu'); }
+              menuButton.click();
+              let tries = 0;
+              const poll = setInterval(() => {
+                tries += 1;
+                const entries = Array.from(document.querySelectorAll('ytmusic-menu-popup-renderer ytmusic-menu-service-item-renderer'));
+                const target = entries.find((e) => /remove from queue|retirer de la file|remove/i.test(e.textContent || ''));
+                if (target) {
+                  clearInterval(poll);
+                  target.click();
+                  let checks = 0;
+                  const verify = setInterval(() => {
+                    checks += 1;
+                    if (document.querySelectorAll('ytmusic-player-queue-item').length < before) {
+                      clearInterval(verify);
+                      resolve('removed');
+                    } else if (checks > 30) {
+                      clearInterval(verify);
+                      resolve('readback-timeout');
+                    }
+                  }, 100);
+                } else if (tries > 25) {
+                  clearInterval(poll);
+                  try { document.body.click(); } catch (e) {}
+                  resolve('menu-timeout');
+                }
+              }, 100);
+            }),
             shuffle: () => { const b = shuffleButton(); if (!b) { return 'missing:shuffle'; } b.click(); return 'clicked'; },
             repeat: () => { const b = repeatButton(); if (!b) { return 'missing:repeat'; } b.click(); return 'clicked'; },
             seek: (t) => {

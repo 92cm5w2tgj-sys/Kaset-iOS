@@ -48,7 +48,7 @@ carried over and the player was rebuilt for iOS.
 - **Collections:** Library (playlists, albums, artists), Liked music, History.
 - **Detail pages** for playlists, albums and artists (top songs, discography, related artists, follow, radio, shuffle).
 - **Now Playing** modelled on Apple Music: artwork-tinted background, scrubber, system volume,
-  like, lyrics, AirPlay, queue (jump to / remove), shuffle and repeat.
+  like, lyrics, AirPlay, queue (jump to, remove, drag to reorder), shuffle and repeat.
 - **Background playback:** keeps going locked, advances through the queue, lock-screen / Control
   Center / AirPods next-previous, native Now Playing card.
 - **Recovery:** web content termination, stuck streams and network changes bring playback back
@@ -131,7 +131,7 @@ personal responses; fixtures use placeholders only.
 
 - Playback depends on selectors and behaviour of the YouTube Music web page. Shuffle/repeat
   state, queue jump/remove and "add to queue" are best effort and can break when the page changes.
-- Queue reordering is not implemented.
+- Queue reordering works by rewriting the affected part of the queue through the page's own menus (the page has no reorder primitive), so moving an entry far down the queue is slow.
 - Podcasts, video mode, scrobbling and AI features of the macOS app are out of scope for v1.
 - Ad skipping is opt-in and may go against YouTube's terms of service.
 
