@@ -29,8 +29,14 @@ final class BrowsePageModel {
         "FEmusic_moods_and_genres", "FEmusic_charts", "FEmusic_new_releases", "FEmusic_explore",
     ]
 
-    private static func withoutShortcuts(_ sections: [HomeSection]) -> [HomeSection] {
+    /// Explore repeats the chart shelves that already have their own Discover segment.
+    private func filtered(_ sections: [HomeSection]) -> [HomeSection] {
+        Self.withoutShortcuts(sections, dropsCharts: self.type == .explore)
+    }
+
+    private static func withoutShortcuts(_ sections: [HomeSection], dropsCharts: Bool) -> [HomeSection] {
         sections.compactMap { section in
+            if dropsCharts, section.isChart { return nil }
             let items = section.items.filter { item in
                 guard case let .playlist(playlist) = item else { return true }
                 let browseId = playlist.resolvedMoodCategoryEndpoint?.browseId ?? playlist.id
@@ -49,7 +55,7 @@ final class BrowsePageModel {
         if self.sections.isEmpty { self.phase = .loading }
         do {
             let response = try await self.client.page(self.type, forceRefresh: force)
-            self.sections = Self.withoutShortcuts(response.sections)
+            self.sections = self.filtered(response.sections)
             self.phase = .loaded
         } catch is CancellationError {
             if self.sections.isEmpty { self.phase = .idle }
@@ -64,7 +70,7 @@ final class BrowsePageModel {
         defer { self.isLoadingMore = false }
         guard let more = try? await self.client.continuation(for: self.type) else { return }
         let known = Set(self.sections.map(\.id))
-        self.sections += Self.withoutShortcuts(more.filter { !known.contains($0.id) })
+        self.sections += self.filtered(more.filter { !known.contains($0.id) })
     }
 }
 
