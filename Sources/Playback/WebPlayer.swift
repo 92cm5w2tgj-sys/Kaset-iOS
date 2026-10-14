@@ -55,6 +55,8 @@ final class WebPlayer: NSObject {
     @ObservationIgnored private var wasOffline = false
     /// True while the mini player shows the last session and the page has no media yet.
     @ObservationIgnored private var isShowingRestoredSession = false
+    /// A music.youtube.com document has finished loading in the current web view.
+    @ObservationIgnored private var hasLoadedPage = false
 
     override init() {
         self.webView = Self.makeWebView(proxy: self.proxy)
@@ -132,6 +134,7 @@ final class WebPlayer: NSObject {
         self.isShowingRestoredSession = false
         self.lastBeat = nil
         self.lastEvent = ""
+        self.hasLoadedPage = false
         self.nowPlaying.clear()
         MPNowPlayingInfoCenter.default().playbackState = .stopped
         if clearingSession {
@@ -152,6 +155,21 @@ final class WebPlayer: NSObject {
         if let playlistId { items.append(URLQueryItem(name: "list", value: playlistId)) }
         components.queryItems = items
         guard let url = components.url else { return }
+        // With a document already loaded, navigate inside it through the web app's own router
+        // (as kaset does): no new document to download, boot and run, so playback starts much
+        // sooner than with a full page load. Falls back to the load if the router is missing.
+        if let videoId, self.hasLoadedPage {
+            self.log.log("cmd", "router watch v=\(videoId) list=\(playlistId ?? "-")")
+            let endpoint = PlayerScripts.watchEndpointScript(videoId: videoId, playlistId: playlistId)
+            self.webView.evaluateJavaScript(endpoint) { [weak self] result, _ in
+                Task { @MainActor in
+                    guard let self, (result as? Bool) != true else { return }
+                    self.log.log("cmd", "router unavailable, loading the watch page")
+                    self.webView.load(URLRequest(url: url))
+                }
+            }
+            return
+        }
         self.log.log("cmd", "load watch v=\(videoId ?? "-") list=\(playlistId ?? "-")")
         self.webView.load(URLRequest(url: url))
     }
@@ -708,6 +726,7 @@ final class WebPlayer: NSObject {
 extension WebPlayer: WKNavigationDelegate, WKUIDelegate {
     func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
         self.pageURL = webView.url?.absoluteString
+        self.hasLoadedPage = webView.url?.host?.hasSuffix("music.youtube.com") == true
         self.log.log("nav", "didFinish \(webView.url?.absoluteString.prefix(80) ?? "")")
     }
 

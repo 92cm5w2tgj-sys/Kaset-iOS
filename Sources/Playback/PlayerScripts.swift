@@ -38,6 +38,22 @@ enum PlayerScripts {
     }
     """
 
+    /// Starts a track through the web app's router (`ytmusic-app.resolveCommand`), the way kaset's
+    /// `routerNavigationScript` does. Returns `false` when the router is not available yet.
+    static func watchEndpointScript(videoId: String, playlistId: String?) -> String {
+        let list = playlistId.map { ", playlistId: \(self.literal($0))" } ?? ""
+        return """
+        (function () {
+          const app = document.querySelector('ytmusic-app');
+          if (!app || typeof app.resolveCommand !== 'function') { return false; }
+          try {
+            app.resolveCommand({ watchEndpoint: { videoId: \(self.literal(videoId))\(list) } });
+            return true;
+          } catch (e) { return false; }
+        })();
+        """
+    }
+
     /// Injected at document start into every document of the playback web view.
     static var page: String {
         """

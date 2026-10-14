@@ -362,6 +362,13 @@ extension PlayerScripts {
                         'ytmusic-menu-popup-renderer ytmusic-menu-service-item-renderer'
                     );
                     if (menuItems.length === 0) return;
+                    // Local change vs kaset: the popup is filled lazily (and an older popup can
+                    // still be mounted), so an open menu without "Play next" yet is not a
+                    // failure. Keep looking for a few seconds before giving up.
+                    if (!findPlayNextItem(menuItems) && Date.now() - startedAt < 4000) {
+                        setTimeout(tryDispatchFromMenu, 100);
+                        return;
+                    }
                     didInspectOpenMenu = true;
                     if (menuObserver) {
                         menuObserver.disconnect();

@@ -128,6 +128,11 @@ extension PlayerScripts {
                     if (done || inspected) return;
                     const items = document.querySelectorAll('ytmusic-menu-popup-renderer ytmusic-menu-service-item-renderer');
                     if (items.length === 0) return;
+                    // The popup is filled lazily; keep looking before declaring the entry missing.
+                    if (!findAddItem(items) && Date.now() - startedAt < 4000) {
+                        setTimeout(tryDispatch, 100);
+                        return;
+                    }
                     inspected = true;
                     if (observer) { observer.disconnect(); observer = null; }
                     dispatchFrom(items);

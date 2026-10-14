@@ -73,6 +73,7 @@ struct PageScriptTests {
         let scripts: [(String, String)] = [
             ("playNext", PlayerScripts.playNext(videoId: "abc", afterVideoId: "def", attempt: 1)),
             ("addToQueue", PlayerScripts.addToQueue(videoId: "abc", attempt: 2)),
+            ("watchEndpoint", PlayerScripts.watchEndpointScript(videoId: "abc", playlistId: "RDAMVMabc")),
             ("audioQualityOverride", PlaybackAudioQualityScripts.playbackAudioQualityOverrideScript),
             ("audioQualityBootstrap", PlaybackAudioQualityScripts.playbackAudioQualityBootstrapScript(quality: .high)),
         ]
