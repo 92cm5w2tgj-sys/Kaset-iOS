@@ -1,6 +1,7 @@
 # Kaset iOS — tracker
 
-Plan: [`PLAN.md`](PLAN.md) · Playback evidence: [`spike-findings.md`](spike-findings.md)
+Plan: [`PLAN.md`](PLAN.md) · Playback evidence: [`spike-findings.md`](spike-findings.md) ·
+Reference app: `~/Desktop/Developer/kaset` (see *Reference* in the plan)
 
 ## Protocol — when the user says "continue selon le plan"
 
@@ -14,7 +15,9 @@ Plan: [`PLAN.md`](PLAN.md) · Playback evidence: [`spike-findings.md`](spike-fin
 4. ✅ only when the user explicitly confirms (record the date).
 5. Never skip ahead, never merge two steps. If the user explicitly asks to chain steps,
    still commit per step and mark each 🟦.
-6. If reality contradicts the plan, stop and amend `PLAN.md` in the same commit.
+6. Before implementing a step, read the matching rows of the plan's *Reference* table in
+   kaset; do not write API code from inference.
+7. If reality contradicts the plan, stop and amend `PLAN.md` in the same commit.
 
 ## Decisions
 

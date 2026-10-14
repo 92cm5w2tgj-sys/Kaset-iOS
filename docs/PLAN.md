@@ -14,19 +14,54 @@ spike's small web view played better. That branch stays as a reference only. **T
 now the app.** The macOS app (`~/Desktop/Developer/kaset`, `main`) is the reference for
 endpoints, parsers, models and the auth contract — sources are *copied*, not shared.
 
+## Reference: the kaset macOS app
+
+Source of truth for how YouTube Music is actually called and parsed. **Read it when you need
+to understand something instead of guessing** — response shapes are undocumented and change
+without notice. Repo: `/Users/mickaelbelhassen/Desktop/Developer/kaset` (branch `main`;
+`feat/ios-port` holds the abandoned port, useful for the iOS-only scripts). Upstream:
+`sozercan/kaset`, fork `emoonadev/kaset`. Paths below are relative to that repo.
+
+| Need | Where |
+|---|---|
+| Project rules, API discovery workflow, secrets policy | `AGENTS.md` (CLAUDE.md) |
+| Architecture overview, playback overview | `docs/architecture.md`, `docs/playback.md` |
+| **Live endpoint exploration** (run it, don't infer) | `swift run api-explorer` — `Sources/APIExplorer/main.swift`, `docs/api-discovery.md`; commands: `auth`, `list`, `browse FEmusic_home -v` |
+| InnerTube client: request body, headers, `SAPISIDHASH`, brand/auth-user, error mapping (`authExpired` on 401/403), caching | `Sources/Kaset/Services/API/YTMusicClient.swift`, `InnerTubeSupport.swift`, `APISessionConfiguration.swift`, `APICache.swift` |
+| Parsers (Home, Search + suggestions, Playlist, Artist, Library, Radio queue, Song metadata, Lyrics, Accounts) | `Sources/Kaset/Services/API/Parsers/*` (modular design: `docs/adr/0003-modular-api-parsers.md`) |
+| Models (Song, Playlist, Album, Artist, HomeSection, SearchResponse, MoodCategory, LikeStatus…) | `Sources/Kaset/Models/*` |
+| Parser tests and **sanitized fixtures** | `Tests/KasetTests/` (e.g. `YTMusicClientTests`, `*ParserTests`, `Fixtures`) |
+| Auth: cookie archive, restore, Keychain, sign-out clearing, login attempts, passkey suppression | `Services/WebKit/WebKitManager*.swift`, `Services/Auth/AuthService.swift`, `AccountService.swift`, `LoginPasskeySuppression.swift`, `Views/LoginSheet.swift`, `Views/LoginWebView.swift`; ADR `0033-login-passkey-suppression.md`; account switching `0023-brand-account-history-session-switch.md` |
+| Playback bridge: page scripts, event payloads, queue injection, ad detection, volume, media-session override | `Views/SingletonPlayerWebView+*.swift`, `Views/MiniPlayerWebView.swift`, `Services/WebKit/PlaybackAdDetectionScript.swift`, `Services/Player/WebPlaybackAudioOutput.swift`; ADRs `0001-webview-playback`, `0026-generation-scoped-web-playback-bridge`, `0034-replace-playback-navigation`, `0035-gapless-playback-native-queue`, `0036-*` (output continuity) |
+| Player/queue semantics (what "play next", shuffle, smart shuffle, queue identity mean) | `Services/Player/PlayerService*.swift`, ADRs `0025-smart-shuffle`, `0027-native-music-playback-intents-and-queue-entry-identity` |
+| Now Playing / remote commands | `Services/Player/NowPlayingManager.swift` |
+| Existing screens to mirror (Home, Explore, Charts, Moods, New releases, Library, History, Playlist/Artist detail, Queue, Lyrics) | `Sources/Kaset/Views/*View.swift`, `ViewModels/*` |
+| Settings keys and defaults | `Services/SettingsManager.swift` |
+| Localization (catalog is the source of truth) | `Sources/Kaset/Resources/Localizable.xcstrings` |
+| Common concurrency / lifecycle pitfalls, diagnostics template | `docs/common-bug-patterns.md` |
+| What was learned porting the macOS code to iOS | `feat/ios-port`: `docs/ios/TRACKER.md` (log), `Sources/KasetiOS/Playback/IOSPlaybackScripts.swift`, `AudioSessionController.swift`, the `#if os(iOS)` blocks in `WebKitManager.swift` |
+| The spike's own evidence | [`spike-findings.md`](spike-findings.md) |
+
+How to use it: **copy** what a step needs (trimming macOS/AppKit, video, AI, scrobbling,
+extensions), keep the original type names so a later diff against kaset stays readable, and
+note the source path + commit in the file header. Do not add kaset as a dependency and do not
+edit it from here.
+
 ## Ground rules
 
 1. **One step at a time**, each ending on a gate: build green on a real iPhone, a short
    verification checklist, then the user confirms. No step starts before the previous is ✅.
-2. **Never put secrets in code, logs or fixtures** (cookies, SAPISID, tokens). Fixtures are
+2. **When unsure how something works, read kaset first** (see *Reference* above), and verify
+   any endpoint with `swift run api-explorer` before writing a parser.
+3. **Never put secrets in code, logs or fixtures** (cookies, SAPISID, tokens). Fixtures are
    sanitized captures; placeholders only.
-3. **API over WebView.** Everything except audio playback and sign-in goes through the
+4. **API over WebView.** Everything except audio playback and sign-in goes through the
    InnerTube client. The web view is the playback engine only.
-4. **Measure, don't guess** for lifecycle/timing problems: file log in `Documents/`
+5. **Measure, don't guess** for lifecycle/timing problems: file log in `Documents/`
    (see spike findings §5).
-5. Swift Testing for unit tests; test suite runs at checkpoints (K3, K6, K9, K12) and
+6. Swift Testing for unit tests; test suite runs at checkpoints (K3, K6, K9, K12) and
    whenever parsers/auth change.
-6. Reality contradicts the plan → stop, say so, amend this file in the same commit.
+7. Reality contradicts the plan → stop, say so, amend this file in the same commit.
 
 ## Architecture
 
