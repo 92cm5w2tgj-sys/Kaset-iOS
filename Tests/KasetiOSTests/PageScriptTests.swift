@@ -51,7 +51,7 @@ struct PageScriptTests {
         #expect(context.evaluateScript("typeof window.__kaset").toString() == "object")
         #expect(context.evaluateScript("__posts.length > 0 && __posts[0].kind").toString() == "boot")
         for command in ["play", "pause", "toggle", "next", "previous", "seek", "state",
-                        "playQueueIndex", "removeQueueIndexAsync", "inspectQueue", "shuffle", "repeat"]
+                        "playQueueIndex", "removeQueueIndexAsync", "inspectQueue", "shuffle", "repeat", "setInterrupted"]
         {
             #expect(
                 context.evaluateScript("typeof window.__kaset.\(command)").toString() == "function",

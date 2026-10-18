@@ -307,6 +307,8 @@ enum PlayerScripts {
           // down and is resumed whenever it is interrupted/suspended (spike findings §2).
           let ctx = null;
           function keepAlive() {
+            // While a phone call (or other takeover) owns the audio, stay out of the way.
+            if (window.__kasetInterrupted) { return; }
             try {
               if (!ctx) {
                 const AC = window.AudioContext || window.webkitAudioContext;
@@ -321,6 +323,7 @@ enum PlayerScripts {
                 osc.start();
                 ctx.onstatechange = () => {
                   post({ kind: 'ka', state: ctx.state });
+                  if (window.__kasetInterrupted) { return; }
                   if (ctx.state === 'interrupted' || ctx.state === 'suspended') { ctx.resume().catch(() => {}); }
                 };
               }
@@ -523,6 +526,19 @@ enum PlayerScripts {
                 }
               } else { out.push('no ytmusic-player-queue'); }
               return out.join('\\n');
+            },
+            // A phone call (or similar) takes the audio: pause the media and the keep-alive
+            // context, and keep the page from resuming either until it is over.
+            setInterrupted: (flag) => {
+              window.__kasetInterrupted = !!flag;
+              const m = media();
+              if (flag) {
+                if (m && !m.paused) { m.pause(); }
+                if (ctx && ctx.state === 'running') { ctx.suspend().catch(() => {}); }
+              } else if (ctx && ctx.state !== 'running') {
+                ctx.resume().catch(() => {});
+              }
+              return flag ? 'interrupted' : 'cleared';
             },
             shuffle: () => { const b = shuffleButton(); if (!b) { return 'missing:shuffle'; } b.click(); return 'clicked'; },
             repeat: () => { const b = repeatButton(); if (!b) { return 'missing:repeat'; } b.click(); return 'clicked'; },

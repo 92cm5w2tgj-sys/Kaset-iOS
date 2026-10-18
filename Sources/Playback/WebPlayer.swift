@@ -1,4 +1,5 @@
 import AVFoundation
+import CallKit
 import MediaPlayer
 import Network
 import Observation
@@ -56,6 +57,11 @@ final class WebPlayer: NSObject {
     @ObservationIgnored private var lastSavedAt = Date.distantPast
     @ObservationIgnored private var lastEvent = ""
     @ObservationIgnored private let pathMonitor = NWPathMonitor()
+    @ObservationIgnored private let callObserver = CXCallObserver()
+    @ObservationIgnored private var callDelegate: CallDelegate?
+    /// A phone call is in progress and playback was paused for it.
+    @ObservationIgnored private var isInCall = false
+    @ObservationIgnored private var pausedForCall = false
     @ObservationIgnored private var wasOffline = false
     /// True while the mini player shows the last session and the page has no media yet.
     @ObservationIgnored private var isShowingRestoredSession = false
@@ -74,6 +80,7 @@ final class WebPlayer: NSObject {
         self.webView.load(URLRequest(url: Self.homeURL))
         self.restoreSavedSession()
         self.startPathMonitor()
+        self.observeCalls()
     }
 
     // MARK: - Web view
@@ -717,6 +724,42 @@ final class WebPlayer: NSObject {
         }
     }
 
+    // MARK: - Phone calls
+
+    /// Pauses when a call rings or connects and resumes after it ends, if it was playing.
+    /// `CXCallObserver` needs no permission or entitlement. Relying only on the audio session
+    /// interruption was not enough: the page's keep-alive audio kept the session busy and the
+    /// music stayed audible during the call.
+    private func observeCalls() {
+        let delegate = CallDelegate { [weak self] in
+            Task { @MainActor in self?.callStateChanged() }
+        }
+        self.callDelegate = delegate
+        self.callObserver.setDelegate(delegate, queue: .main)
+    }
+
+    private func callStateChanged() {
+        let active = self.callObserver.calls.contains { !$0.hasEnded }
+        guard active != self.isInCall else { return }
+        self.isInCall = active
+        if active {
+            self.pausedForCall = self.state.isPlaying
+            self.log.log("call", "call started (wasPlaying=\(self.pausedForCall)): pausing")
+            self.webView.evaluateJavaScript("window.__kaset ? window.__kaset.setInterrupted(true) : 'no-page'", completionHandler: nil)
+        } else {
+            let shouldResume = self.pausedForCall
+            self.pausedForCall = false
+            self.log.log("call", "call ended (resume=\(shouldResume))")
+            Task {
+                // Give the system a moment to hand the audio route back before playing.
+                try? await Task.sleep(for: .milliseconds(800))
+                _ = await Task.detached(priority: .userInitiated) { Self.activateAudioSession(configuring: false) }.value
+                _ = try? await self.webView.evaluateJavaScript("window.__kaset ? window.__kaset.setInterrupted(false) : 'no-page'")
+                if shouldResume { self.command("play") }
+            }
+        }
+    }
+
     // MARK: - Lifecycle
 
     private func observeLifecycle() {
@@ -768,4 +811,13 @@ extension WebPlayer: WKNavigationDelegate, WKUIDelegate {
         if navigationAction.targetFrame == nil { webView.load(navigationAction.request) }
         return nil
     }
+}
+
+/// `CXCallObserverDelegate` is an Objective-C protocol, so it needs an NSObject.
+private final class CallDelegate: NSObject, CXCallObserverDelegate {
+    private let onChange: @Sendable () -> Void
+
+    init(onChange: @escaping @Sendable () -> Void) { self.onChange = onChange }
+
+    func callObserver(_: CXCallObserver, callChanged _: CXCall) { self.onChange() }
 }
