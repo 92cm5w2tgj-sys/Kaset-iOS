@@ -62,6 +62,8 @@ final class WebPlayer: NSObject {
     /// A phone call is in progress and playback was paused for it.
     @ObservationIgnored private var isInCall = false
     @ObservationIgnored private var pausedForCall = false
+    /// The page was told to stand down for a call (`setInterrupted(true)`) and not yet released.
+    @ObservationIgnored private var pageIsInterrupted = false
     @ObservationIgnored private var wasOffline = false
     /// True while the mini player shows the last session and the page has no media yet.
     @ObservationIgnored private var isShowingRestoredSession = false
@@ -403,6 +405,7 @@ final class WebPlayer: NSObject {
     }
 
     private func command(_ name: String, argument: String? = nil) {
+        if name == "play" || name == "toggle", !self.isInCall { self.releasePageInterruption() }
         let call = "\(name)(\(argument ?? ""))"
         let js = "window.__kaset ? String(window.__kaset.\(call)) : 'no-page'"
         Task {
@@ -440,6 +443,9 @@ final class WebPlayer: NSObject {
             let event = message["ev"] as? String ?? ""
             self.lastEvent = event
             self.state = self.state.applying(message, at: now)
+            // Playback started again (lock-screen / widget play, user tap) while no call is
+            // active: the page must never stay in its "stand down" mode.
+            if self.pageIsInterrupted, !self.isInCall, self.state.isPlaying { self.releasePageInterruption() }
             self.persistSession(at: now)
             if event == "error" || event == "stalled" || event == "emptied" { self.scheduleRecoveryCheck(after: event) }
             if message["ad"] as? Bool == true, event != "hb" || self.state.isAd == false {
@@ -739,12 +745,24 @@ final class WebPlayer: NSObject {
     }
 
     private func callStateChanged() {
-        let active = self.callObserver.calls.contains { !$0.hasEnded }
+        let calls = self.callObserver.calls
+        let summary = calls.map {
+            "connected=\($0.hasConnected) ended=\($0.hasEnded) outgoing=\($0.isOutgoing) hold=\($0.isOnHold)"
+        }.joined(separator: " | ")
+        self.log.log("call", "changed: \(calls.count) call(s) [\(summary)]")
+
+        let active = calls.contains { !$0.hasEnded }
         guard active != self.isInCall else { return }
         self.isInCall = active
         if active {
-            self.pausedForCall = self.state.isPlaying
-            self.log.log("call", "call started (wasPlaying=\(self.pausedForCall)): pausing")
+            // Nothing to pause when nothing plays: leave the page alone (no stuck flags).
+            guard self.state.isPlaying else {
+                self.log.log("call", "call started while not playing: ignoring")
+                return
+            }
+            self.pausedForCall = true
+            self.pageIsInterrupted = true
+            self.log.log("call", "call started while playing: pausing")
             self.webView.evaluateJavaScript("window.__kaset ? window.__kaset.setInterrupted(true) : 'no-page'", completionHandler: nil)
         } else {
             let shouldResume = self.pausedForCall
@@ -754,10 +772,17 @@ final class WebPlayer: NSObject {
                 // Give the system a moment to hand the audio route back before playing.
                 try? await Task.sleep(for: .milliseconds(800))
                 _ = await Task.detached(priority: .userInitiated) { Self.activateAudioSession(configuring: false) }.value
-                _ = try? await self.webView.evaluateJavaScript("window.__kaset ? window.__kaset.setInterrupted(false) : 'no-page'")
+                self.releasePageInterruption()
                 if shouldResume { self.command("play") }
             }
         }
+    }
+
+    /// Lets the page's keep-alive and media run again.
+    private func releasePageInterruption() {
+        guard self.pageIsInterrupted else { return }
+        self.pageIsInterrupted = false
+        self.webView.evaluateJavaScript("window.__kaset ? window.__kaset.setInterrupted(false) : 'no-page'", completionHandler: nil)
     }
 
     // MARK: - Lifecycle
@@ -773,7 +798,10 @@ final class WebPlayer: NSObject {
             Task { [weak self] in
                 for await _ in NotificationCenter.default.notifications(named: name) {
                     self?.log.log("app", label)
-                    if label == "willEnterForeground" { self?.refreshState() }
+                    if label == "willEnterForeground" {
+                        self?.refreshState()
+                        self?.callStateChanged()
+                    }
                 }
             }
         }
