@@ -42,6 +42,7 @@ struct PlayerHealthReport: Equatable, Sendable {
             "queue": ("Queue list", "Queue screen, jump, remove, reorder"),
             "queueIds": ("Queue video ids", "Play next / add to queue checks, reorder"),
             "queueCurrent": ("Current queue entry", "Now-playing marker in the queue, play next"),
+            "buffer": ("Buffer ahead", "How long playback survives a network drop"),
         ]
     }
 

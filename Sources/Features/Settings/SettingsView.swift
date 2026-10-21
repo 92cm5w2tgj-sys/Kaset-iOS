@@ -11,6 +11,8 @@ struct SettingsView: View {
     @AppStorage("nativeNowPlaying") private var nativeNowPlaying = true
     @AppStorage(AdSkip.storageKey) private var adAutoSkip = false
     @AppStorage("settings.handlePhoneCalls") private var handlePhoneCalls = true
+    @AppStorage(BufferPolicy.adaptiveQualityStorageKey) private var adaptiveQuality = true
+    @AppStorage(BufferPolicy.extendedStorageKey) private var extendedBuffer = false
 
     @State private var accounts: [UserAccount] = []
     @State private var isSwitching = false
@@ -33,6 +35,17 @@ struct SettingsView: View {
                     Text("Skipping ads is an opt-in and may go against YouTube's terms of service.")
                 }
                 .onChange(of: self.adAutoSkip) { _, _ in self.environment.player.applyAdSkipSetting() }
+
+                Section {
+                    Toggle("Lower quality on a weak network", isOn: self.$adaptiveQuality)
+                        .onChange(of: self.adaptiveQuality) { _, _ in self.environment.player.applyAudioQuality() }
+                    Toggle("Longer buffer (experimental)", isOn: self.$extendedBuffer)
+                        .onChange(of: self.extendedBuffer) { _, _ in self.environment.player.applyBufferSetting() }
+                } header: {
+                    Text("Bad network")
+                } footer: {
+                    Text("Low quality is used after the music cut out for lack of data, or in Low Data Mode, until you are back on Wi-Fi. The longer buffer asks the page to load up to 4 minutes of the current song ahead; it fully applies after relaunching the app.")
+                }
 
                 Section {
                     Picker("Content language", selection: self.$language) {
@@ -59,6 +72,7 @@ struct SettingsView: View {
                         }
                     }
                     Button("Inspect queue (log)") { self.environment.player.inspectQueue() }
+                    Button("Inspect buffer (log)") { self.environment.player.inspectBuffer() }
                     NavigationLink("Playback debug") { PlaybackDebugView(player: self.environment.player) }
                     NavigationLink("API debug") { APIDebugView(client: self.environment.client, player: self.environment.player) }
                 }

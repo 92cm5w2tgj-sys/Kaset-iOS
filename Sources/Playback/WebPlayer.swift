@@ -74,6 +74,22 @@ final class WebPlayer: NSObject {
     /// The page was told to stand down for a call (`setInterrupted(true)`) and not yet released.
     @ObservationIgnored private var pageIsInterrupted = false
     @ObservationIgnored private var wasOffline = false
+    @ObservationIgnored private var isOnline = true
+    /// Playing when the network dropped: resume once it is back.
+    @ObservationIgnored private var playingWhenWentOffline = false
+    @ObservationIgnored private var wentOfflineAt = Date.distantPast
+    /// A recovery was skipped because there was no network to reload with.
+    @ObservationIgnored private var recoveryPendingNetwork = false
+    @ObservationIgnored private var lastUserPause = Date.distantPast
+    @ObservationIgnored private var lastSeekCommand = Date.distantPast
+    /// Why the audio quality is temporarily lowered (`nil`: the user's setting applies).
+    @ObservationIgnored private var lowQualityReason: String?
+    @ObservationIgnored private var lastUnderrun = Date.distantPast
+    /// The media element reported `error` (seen when the device locks while paused) and has
+    /// not played since; play must reload the track instead of pressing play on it.
+    @ObservationIgnored private var mediaFailed = false
+    @ObservationIgnored private var lastBufferLog = Date.distantPast
+    @ObservationIgnored private var positionBeforeError: TimeInterval = 0
     /// True while the mini player shows the last session and the page has no media yet.
     @ObservationIgnored private var isShowingRestoredSession = false
     /// A music.youtube.com document has finished loading in the current web view.
@@ -111,6 +127,10 @@ final class WebPlayer: NSObject {
         preferences.preferredContentMode = .desktop
         configuration.defaultWebpagePreferences = preferences
 
+        configuration.userContentController.addUserScript(WKUserScript(
+            source: BufferScripts.bootstrap(extended: BufferPolicy.isExtended),
+            injectionTime: .atDocumentStart, forMainFrameOnly: true
+        ))
         configuration.userContentController.addUserScript(WKUserScript(
             source: PlayerScripts.page, injectionTime: .atDocumentStart, forMainFrameOnly: true
         ))
@@ -181,12 +201,21 @@ final class WebPlayer: NSObject {
         // (as kaset does): no new document to download, boot and run, so playback starts much
         // sooner than with a full page load. Falls back to the load if the router is missing.
         if let videoId, self.hasLoadedPage {
-            self.log.log("cmd", "router watch v=\(videoId) list=\(playlistId ?? "-")")
             let endpoint = PlayerScripts.watchEndpointScript(videoId: videoId, playlistId: playlistId)
             self.webView.evaluateJavaScript(endpoint) { [weak self] result, _ in
                 Task { @MainActor in
-                    guard let self, (result as? Bool) != true else { return }
-                    self.log.log("cmd", "router unavailable, loading the watch page")
+                    guard let self else { return }
+                    guard let via = result as? String else {
+                        self.log.log("cmd", "no in-page navigation, loading the watch page")
+                        self.webView.load(URLRequest(url: url))
+                        return
+                    }
+                    self.log.log("cmd", "\(via) watch v=\(videoId) list=\(playlistId ?? "-")")
+                    if via != "resolveCommand" { self.logRouterCandidatesOnce() }
+                    // An event nobody handles fails silently: load the page if the track did not change.
+                    try? await Task.sleep(for: .seconds(3))
+                    guard self.state.videoId != videoId else { return }
+                    self.log.log("cmd", "\(via) did not start \(videoId), loading the watch page")
                     self.webView.load(URLRequest(url: url))
                 }
             }
@@ -194,6 +223,16 @@ final class WebPlayer: NSObject {
         }
         self.log.log("cmd", "load watch v=\(videoId ?? "-") list=\(playlistId ?? "-")")
         self.webView.load(URLRequest(url: url))
+    }
+
+    @ObservationIgnored private var loggedRouterCandidates = false
+
+    private func logRouterCandidatesOnce() {
+        guard !self.loggedRouterCandidates else { return }
+        self.loggedRouterCandidates = true
+        self.webView.evaluateJavaScript(PlayerScripts.routerCandidatesScript) { [weak self] result, _ in
+            Task { @MainActor in self?.log.log("router", "ytmusic-app: \((result as? String) ?? "?")") }
+        }
     }
 
     /// Plays the song followed by its radio (YouTube Music's endless queue of similar songs).
@@ -271,17 +310,24 @@ final class WebPlayer: NSObject {
 
     func resume() {
         if !self.state.hasMedia, self.resumeSavedSession() { return }
+        if self.recoverFailedMedia() { return }
         self.command("play")
     }
-    func pause() { self.command("pause") }
+    func pause() {
+        self.lastUserPause = Date()
+        self.command("pause")
+    }
     func togglePlayPause() {
         if !self.state.hasMedia, self.resumeSavedSession() { return }
+        if self.recoverFailedMedia() { return }
+        if self.state.isPlaying { self.lastUserPause = Date() }
         self.command("toggle")
     }
     func next() { self.command("next") }
     func previous() { self.command("previous") }
 
     func seek(to seconds: TimeInterval) {
+        self.lastSeekCommand = Date()
         self.command("seek", argument: String(max(0, seconds)))
     }
 
@@ -429,8 +475,13 @@ final class WebPlayer: NSObject {
     }
 
     /// Applies the stored audio-quality preference to the live page.
+    /// The user's quality, or low while the network is weak (see `lowQualityReason`).
+    var effectiveAudioQuality: PlaybackAudioQuality {
+        self.lowQualityReason != nil && BufferPolicy.adaptsQuality ? .low : .current
+    }
+
     func applyAudioQuality() {
-        let script = PlaybackAudioQualityScripts.playbackAudioQualitySyncScript(quality: .current)
+        let script = PlaybackAudioQualityScripts.playbackAudioQualitySyncScript(quality: self.effectiveAudioQuality)
         self.webView.evaluateJavaScript(script, completionHandler: nil)
     }
 
@@ -484,7 +535,15 @@ final class WebPlayer: NSObject {
                 self.isShowingRestoredSession = false
             }
             let previousID = self.state.videoId
+            let wasPlaying = self.state.isPlaying
             let event = message["ev"] as? String ?? ""
+            if event == "error", !self.mediaFailed, self.state.videoId != nil {
+                self.mediaFailed = true
+                self.positionBeforeError = self.state.position(at: now)
+                self.log.log("media", "error: keeping \(Int(self.positionBeforeError))s for the next play")
+            } else if event == "playing" {
+                self.mediaFailed = false
+            }
             self.lastEvent = event
             self.eventSerial += 1
             self.state = self.state.applying(message, at: now)
@@ -494,6 +553,17 @@ final class WebPlayer: NSObject {
             self.persistSession(at: now)
             if event == "error" || event == "stalled" || event == "emptied" { self.scheduleRecoveryCheck(after: event) }
             if event == "pause" { self.resumeIfPausedByBackgrounding() }
+            if event == "waiting" || event == "stalled" { self.noteBufferStarvation(event: event, wasPlaying: wasPlaying, at: now) }
+            if message["hb"] as? Bool == true, self.state.isPlaying, now.timeIntervalSince(self.lastBufferLog) >= 30 {
+                self.lastBufferLog = now
+                let buffered = self.state.bufferedAhead.map { "\(Int($0))s" } ?? "?"
+                self.log.log("buffer", "t=\(Int(self.state.position))/\(Int(self.state.duration))s ahead=\(buffered)")
+            }
+            if message["hb"] as? Bool == true, self.lowQualityReason == "underrun",
+               now.timeIntervalSince(self.lastUnderrun) > 10 * 60
+            {
+                self.setLowQuality(reason: nil)
+            }
             if message["ad"] as? Bool == true, event != "hb" || self.state.isAd == false {
                 self.log.log("ad", "ad playing (autoSkip=\(AdSkip.isEnabled))")
             }
@@ -502,8 +572,9 @@ final class WebPlayer: NSObject {
                 self.scheduleHealthCheck()
             }
             if message["hb"] as? Bool != true {
+                let buffered = self.state.bufferedAhead.map { "\(Int($0))s" } ?? "?"
                 self.log.log("media", "\(message["ev"] as? String ?? "?") playing=\(self.state.isPlaying) "
-                    + "\(Int(self.state.position))/\(Int(self.state.duration))s vis=\(self.state.visibility ?? "?")")
+                    + "\(Int(self.state.position))/\(Int(self.state.duration))s buf=\(buffered) vis=\(self.state.visibility ?? "?")")
             }
             self.publishNowPlaying()
         case "queueResult":
@@ -592,7 +663,8 @@ final class WebPlayer: NSObject {
 
     /// Throttled: at most every 5 s, so a kill loses only a few seconds of position.
     private func persistSession(at date: Date) {
-        guard let videoId = self.state.videoId, self.state.hasMedia else { return }
+        // After a media error the page reports 0/0: keep the last good position saved.
+        guard let videoId = self.state.videoId, self.state.hasMedia, !self.mediaFailed else { return }
         guard date.timeIntervalSince(self.lastSavedAt) >= 5 else { return }
         self.lastSavedAt = date
         let session = SavedSession(
@@ -636,10 +708,27 @@ final class WebPlayer: NSObject {
         if let url = components.url { self.webView.load(URLRequest(url: url)) }
     }
 
+    /// Play after a media error: reload the track where it was. `false` when there was no error.
+    private func recoverFailedMedia() -> Bool {
+        guard self.mediaFailed, let videoId = self.state.videoId else { return false }
+        self.mediaFailed = false
+        self.log.log("recover", "play after media error: reload \(videoId) at \(Int(self.positionBeforeError))s")
+        self.lastRecovery = Date()
+        self.load(videoId: videoId, listId: self.state.listId, at: self.positionBeforeError)
+        return true
+    }
+
     /// Brings playback back after a page failure: same track, same list, same position.
     /// Rate limited so a persistent failure cannot loop.
     func recover(reason: String) {
         let now = Date()
+        // Reloading without a network fails and throws away what the page had buffered; wait for
+        // the network instead (`networkReturned`).
+        guard self.isOnline else {
+            self.log.log("recover", "\(reason): offline, waiting for the network")
+            self.recoveryPendingNetwork = true
+            return
+        }
         guard now.timeIntervalSince(self.lastRecovery) > 15 else { return }
         guard let videoId = self.state.videoId else {
             self.webView.reload()
@@ -676,17 +765,89 @@ final class WebPlayer: NSObject {
 
     private func startPathMonitor() {
         self.pathMonitor.pathUpdateHandler = { [weak self] path in
+            let online = path.status == .satisfied
+            let constrained = path.isConstrained
+            let wifi = path.usesInterfaceType(.wifi) || path.usesInterfaceType(.wiredEthernet)
             Task { @MainActor [weak self] in
                 guard let self else { return }
-                let online = path.status == .satisfied
-                self.log.log("network", online ? "online" : "offline")
-                if online, self.wasOffline, self.state.hasMedia, !self.state.isPlaying, self.lastEvent != "pause" {
-                    self.recover(reason: "network back")
+                self.log.log("network", online
+                    ? "online (\(wifi ? "wifi" : "cellular")\(constrained ? ", low data" : ""))"
+                    : "offline (buf=\(self.state.bufferedAhead.map { "\(Int($0))s" } ?? "?"))")
+                if !online, self.isOnline {
+                    self.playingWhenWentOffline = self.state.isPlaying
+                    self.wentOfflineAt = Date()
                 }
+                self.isOnline = online
+                if online {
+                    if constrained {
+                        self.setLowQuality(reason: "low data mode")
+                    } else if wifi {
+                        self.setLowQuality(reason: nil)
+                    }
+                }
+                if online, self.wasOffline { self.networkReturned() }
                 self.wasOffline = !online
             }
         }
         self.pathMonitor.start(queue: DispatchQueue(label: "dev.emoona.kaset.path"))
+    }
+
+    /// The page usually picks up again by itself once it can load; give it a moment, then nudge
+    /// it with `play`, and only reload (losing the buffer) if that did not work either.
+    private func networkReturned() {
+        let wasPlaying = self.playingWhenWentOffline && self.lastUserPause < self.wentOfflineAt
+        let pending = self.recoveryPendingNetwork
+        self.playingWhenWentOffline = false
+        self.recoveryPendingNetwork = false
+        guard self.state.hasMedia, wasPlaying || pending else { return }
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(4))
+            guard let self, !self.state.isPlaying, self.lastUserPause < self.wentOfflineAt else { return }
+            self.log.log("network", "back, playback still stopped: play")
+            self.command("play")
+            try? await Task.sleep(for: .seconds(6))
+            guard !self.state.isPlaying, self.lastUserPause < self.wentOfflineAt else { return }
+            self.recover(reason: "network back")
+        }
+    }
+
+    /// A `waiting`/`stalled` while playing with nothing left in the buffer (not a seek, not a
+    /// track start) means the network cannot keep up: drop to low quality for a while.
+    private func noteBufferStarvation(event: String, wasPlaying: Bool, at date: Date) {
+        guard wasPlaying, self.state.position > 5, (self.state.bufferedAhead ?? 0) < 1,
+              date.timeIntervalSince(self.lastSeekCommand) > 3
+        else { return }
+        self.log.log("network", "underrun (\(event)) at \(Int(self.state.position))s, online=\(self.isOnline)")
+        guard self.isOnline else { return }
+        self.lastUnderrun = date
+        self.setLowQuality(reason: "underrun")
+    }
+
+    private func setLowQuality(reason: String?) {
+        guard reason != self.lowQualityReason else { return }
+        // A data-saver reason is not replaced by an underrun, only cleared.
+        if reason == "underrun", self.lowQualityReason == "low data mode" { return }
+        self.lowQualityReason = reason
+        guard BufferPolicy.adaptsQuality, PlaybackAudioQuality.current != .low else { return }
+        self.log.log("quality", reason.map { "lowered (\($0))" } ?? "back to \(PlaybackAudioQuality.current.rawValue)")
+        self.applyAudioQuality()
+    }
+
+    /// Turns the longer buffer on or off in the live page; flag overrides apply on the next load.
+    func applyBufferSetting() {
+        let js = "window.__kasetExtendedBuffer = \(BufferPolicy.isExtended ? "true" : "false");"
+        self.webView.evaluateJavaScript(js, completionHandler: nil)
+    }
+
+    /// Writes what the page buffers and which read-ahead flags it uses into the log.
+    func inspectBuffer() {
+        let js = "window.__kasetBuffer ? window.__kasetBuffer.inspect() : 'buffer script not loaded'"
+        self.webView.evaluateJavaScript(js) { [weak self] result, error in
+            Task { @MainActor in
+                let text = (result as? String) ?? error?.localizedDescription ?? "nil"
+                for line in text.split(separator: "\n") { self?.log.log("buffer", String(line)) }
+            }
+        }
     }
 
     // MARK: - Now Playing / remote commands
@@ -720,6 +881,7 @@ final class WebPlayer: NSObject {
         guard Date().timeIntervalSince(self.lastRemoteCommand) > 0.6 else { return .success }
         self.lastRemoteCommand = Date()
         self.log.log("remote", "lock screen \(command)")
+        if command == "play" || command == "toggle", self.recoverFailedMedia() { return .success }
         self.command(command)
         return .success
     }
@@ -916,6 +1078,8 @@ extension WebPlayer: WKNavigationDelegate, WKUIDelegate {
     func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
         self.pageURL = webView.url?.absoluteString
         self.hasLoadedPage = webView.url?.host?.hasSuffix("music.youtube.com") == true
+        // A fresh document starts from the user's quality; keep it low while the network is weak.
+        if self.lowQualityReason != nil { self.applyAudioQuality() }
         self.log.log("nav", "didFinish \(webView.url?.absoluteString.prefix(80) ?? "")")
     }
 

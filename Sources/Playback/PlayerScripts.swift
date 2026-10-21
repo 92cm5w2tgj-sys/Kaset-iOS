@@ -38,21 +38,43 @@ enum PlayerScripts {
     }
     """
 
-    /// Starts a track through the web app's router (`ytmusic-app.resolveCommand`), the way kaset's
-    /// `routerNavigationScript` does. Returns `false` when the router is not available yet.
+    /// Starts a track inside the loaded web app, without a page load: through the router
+    /// (`ytmusic-app.resolveCommand`, as kaset does) or, where that method is gone, by firing the
+    /// app's own `yt-navigate` event. Returns the mechanism used, or `false` when neither exists;
+    /// the caller checks that the track really changed.
     static func watchEndpointScript(videoId: String, playlistId: String?) -> String {
         let list = playlistId.map { ", playlistId: \(self.literal($0))" } ?? ""
         return """
         (function () {
           const app = document.querySelector('ytmusic-app');
-          if (!app || typeof app.resolveCommand !== 'function') { return false; }
+          if (!app) { return false; }
+          const endpoint = { watchEndpoint: { videoId: \(self.literal(videoId))\(list) } };
           try {
-            app.resolveCommand({ watchEndpoint: { videoId: \(self.literal(videoId))\(list) } });
-            return true;
+            if (typeof app.resolveCommand === 'function') { app.resolveCommand(endpoint); return 'resolveCommand'; }
+          } catch (e) {}
+          try {
+            app.dispatchEvent(new CustomEvent('yt-navigate', { bubbles: true, composed: true, detail: { endpoint: endpoint } }));
+            return 'yt-navigate';
           } catch (e) { return false; }
         })();
         """
     }
+
+    /// Names on `ytmusic-app` that look like a navigation entry point; logged when the router
+    /// is missing so a replacement can be found.
+    static let routerCandidatesScript = """
+    (function () {
+      const app = document.querySelector('ytmusic-app');
+      if (!app) { return 'no ytmusic-app'; }
+      const names = new Set();
+      let p = app;
+      for (let d = 0; p && d < 6 && p !== HTMLElement.prototype; d += 1) {
+        Object.getOwnPropertyNames(p).forEach((n) => names.add(n));
+        p = Object.getPrototypeOf(p);
+      }
+      return Array.from(names).filter((n) => /command|navigat|resolve|endpoint|route/i.test(n)).slice(0, 40).join(',');
+    })();
+    """
 
     /// Injected at document start into every document of the playback web view.
     static var page: String {
@@ -198,6 +220,11 @@ enum PlayerScripts {
           window.__kasetAdAutoSkip = \(AdSkip.isEnabled ? "true" : "false");
           const adNow = () => { try { return !!isAdShowing(); } catch (e) { return false; } };
 
+          // Seconds of the current track already loaded past the playhead (BufferScripts).
+          const bufferAhead = () => {
+            try { return window.__kasetBuffer ? window.__kasetBuffer.ahead() : null; } catch (e) { return null; }
+          };
+
           let lastQueueKey = '';
           const state = (ev, withQueue) => {
             const m = media();
@@ -213,6 +240,7 @@ enum PlayerScripts {
               title: meta.title, artist: meta.artist, album: meta.album, artwork: meta.artwork,
               canNext: enabled('next'), canPrevious: enabled('previous'),
               shuffle: shuffleOn(), repeat: repeatMode(), ad: adNow(),
+              buf: bufferAhead(),
               vis: realVis()
             };
             if (withQueue) {
@@ -572,7 +600,8 @@ enum PlayerScripts {
               const apiOk = !!api && typeof api.seekTo === 'function' && typeof api.getVideoData === 'function';
               add('playerApi', apiOk, api ? (api.id || api.tagName || 'playerApi') + (apiOk ? '' : ' without seekTo/getVideoData') : 'absent', false);
               const app = document.querySelector('ytmusic-app');
-              add('router', app && typeof app.resolveCommand === 'function', app ? '' : 'no ytmusic-app', false);
+              add('router', app && typeof app.resolveCommand === 'function',
+                app ? (typeof app.resolveCommand === 'function' ? '' : 'resolveCommand missing (yt-navigate fallback)') : 'no ytmusic-app', false);
               const md = navigator.mediaSession && navigator.mediaSession.metadata;
               add('mediaSession', md && md.title, md && md.title ? md.title : 'no metadata', true);
               let bar = null;
@@ -601,6 +630,11 @@ enum PlayerScripts {
               add('queueIds', items.length > 0 && withIds === items.length, withIds + '/' + items.length + ' with a video id', true);
               const current = items.filter((e) => e.current).length;
               add('queueCurrent', current === 1, current + ' marked current', true);
+              let summary = 'buffer script not loaded';
+              try { if (window.__kasetBuffer) { summary = window.__kasetBuffer.summary(); } } catch (e) {}
+              const ahead = bufferAhead();
+              // Informational: an empty buffer at the end of a track is normal; only a missing readout fails.
+              add('buffer', ahead !== null, (ahead === null ? '?' : ahead) + ' s ahead · ' + summary, true);
               return { hasTrack: hasTrack, checks: checks };
             },
             shuffle: () => { const b = shuffleButton(); if (!b) { return 'missing:shuffle'; } b.click(); return 'clicked'; },

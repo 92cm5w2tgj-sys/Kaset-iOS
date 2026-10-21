@@ -170,6 +170,16 @@
         }
       }
     },
+    "Bad network" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mauvais réseau"
+          }
+        }
+      }
+    },
     "Cancel" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -511,6 +521,17 @@
     "Log" : {
 
     },
+    "Longer buffer (experimental)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Tampon plus long (expérimental)"
+          }
+        }
+      }
+    },
     "Low" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -518,6 +539,27 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Basse"
+          }
+        }
+      }
+    },
+    "Low quality is used after the music cut out for lack of data, or in Low Data Mode, until you are back on Wi-Fi. The longer buffer asks the page to load up to 4 minutes of the current song ahead; it fully applies after relaunching the app." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La qualité basse est utilisée après une coupure faute de données, ou en mode Données réduites, jusqu'au retour en Wi-Fi. Le tampon plus long demande à la page de charger jusqu'à 4 minutes d'avance sur la chanson en cours ; il s'applique entièrement après un redémarrage de l'app."
+          }
+        }
+      }
+    },
+    "Lower quality on a weak network" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Baisser la qualité si le réseau est faible"
           }
         }
       }

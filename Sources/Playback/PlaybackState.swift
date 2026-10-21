@@ -37,6 +37,8 @@ struct PlaybackState: Equatable, Sendable {
     /// The page is currently playing an advertisement.
     var isAd = false
     var repeatMode: RepeatMode = .off
+    /// Seconds of the current track loaded past the playhead, as last reported.
+    var bufferedAhead: TimeInterval?
     var visibility: String?
     var updatedAt = Date.distantPast
 
@@ -86,6 +88,9 @@ struct PlaybackState: Equatable, Sendable {
         }
         if message.keys.contains("artwork") {
             next.artworkURL = Self.string(message["artwork"]).flatMap(URL.init(string:))
+        }
+        if message.keys.contains("buf") {
+            next.bufferedAhead = Self.number(message["buf"])
         }
         if let canNext = message["canNext"] as? Bool { next.canGoNext = canNext }
         if let canPrevious = message["canPrevious"] as? Bool { next.canGoPrevious = canPrevious }

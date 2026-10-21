@@ -94,6 +94,7 @@ struct PageScriptTests {
             ("addToQueue", PlayerScripts.addToQueue(videoId: "abc", attempt: 2)),
             ("watchEndpoint", PlayerScripts.watchEndpointScript(videoId: "abc", playlistId: "RDAMVMabc")),
             ("audioQualityOverride", PlaybackAudioQualityScripts.playbackAudioQualityOverrideScript),
+            ("bufferBootstrap", BufferScripts.bootstrap(extended: true)),
             ("audioQualityBootstrap", PlaybackAudioQualityScripts.playbackAudioQualityBootstrapScript(quality: .high)),
         ]
         for (name, source) in scripts {
