@@ -16,10 +16,12 @@ struct MediaCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            ArtworkView(url: self.entity.thumbnailURL)
+            // The square sets the size; the artwork only fills it. Drawn directly, a wide
+            // (video) thumbnail in fill mode would widen the card past its grid column.
+            Color.clear
                 .frame(width: self.width, height: self.width)
-                .frame(maxWidth: self.width == nil ? .infinity : nil)
                 .aspectRatio(1, contentMode: .fit)
+                .overlay { ArtworkView(url: self.entity.thumbnailURL) }
                 .clipShape(self.entity.isCircular ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: 10, style: .continuous)))
                 .overlay {
                     if self.entity.isCircular {

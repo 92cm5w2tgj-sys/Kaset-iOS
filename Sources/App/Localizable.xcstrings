@@ -1,36 +1,6 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
-    "Plays from this line" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lit à partir de cette ligne"
-          }
-        }
-      }
-    },
-    "Source: %@" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Source : %@"
-          }
-        }
-      }
-    },
-    "Start Radio" : {
-      "localizations" : {
-        "fr" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Lancer la radio"
-          }
-        }
-      }
-    },
     "%@" : {
 
     },
@@ -63,6 +33,12 @@
           }
         }
       }
+    },
+    "%@ checks need a track playing." : {
+
+    },
+    "%@ failing" : {
+
     },
     "About" : {
       "localizations" : {
@@ -819,6 +795,17 @@
         }
       }
     },
+    "Plays from this line" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lit à partir de cette ligne"
+          }
+        }
+      }
+    },
     "Previous" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1185,6 +1172,27 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Titres, albums, artistes, playlists et vidéos."
+          }
+        }
+      }
+    },
+    "Source: %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Source : %@"
+          }
+        }
+      }
+    },
+    "Start Radio" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Lancer la radio"
           }
         }
       }
