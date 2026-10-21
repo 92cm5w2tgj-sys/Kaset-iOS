@@ -62,6 +62,13 @@ final class WebPlayer: NSObject {
     /// A phone call is in progress and playback was paused for it.
     @ObservationIgnored private var isInCall = false
     @ObservationIgnored private var pausedForCall = false
+    /// Set when the app goes to the background while playing: iOS/WebKit can pause the media at
+    /// that moment even though background audio is allowed; we resume it right away.
+    @ObservationIgnored private var playingWhenBackgrounded = false
+    @ObservationIgnored private var backgroundedAt = Date.distantPast
+    @ObservationIgnored private var resumedAfterBackgroundPause = false
+    /// Increments on every page event; lets delayed checks know nothing newer happened.
+    @ObservationIgnored private var eventSerial = 0
     /// The page was told to stand down for a call (`setInterrupted(true)`) and not yet released.
     @ObservationIgnored private var pageIsInterrupted = false
     @ObservationIgnored private var wasOffline = false
@@ -442,12 +449,14 @@ final class WebPlayer: NSObject {
             let previousID = self.state.videoId
             let event = message["ev"] as? String ?? ""
             self.lastEvent = event
+            self.eventSerial += 1
             self.state = self.state.applying(message, at: now)
             // Playback started again (lock-screen / widget play, user tap) while no call is
             // active: the page must never stay in its "stand down" mode.
             if self.pageIsInterrupted, !self.isInCall, self.state.isPlaying { self.releasePageInterruption() }
             self.persistSession(at: now)
             if event == "error" || event == "stalled" || event == "emptied" { self.scheduleRecoveryCheck(after: event) }
+            if event == "pause" { self.resumeIfPausedByBackgrounding() }
             if message["ad"] as? Bool == true, event != "hb" || self.state.isAd == false {
                 self.log.log("ad", "ad playing (autoSkip=\(AdSkip.isEnabled))")
             }
@@ -603,10 +612,14 @@ final class WebPlayer: NSObject {
 
     /// An `error`/`stalled` event is only a problem if playback has not come back shortly after.
     private func scheduleRecoveryCheck(after event: String) {
+        let serial = self.eventSerial
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(8))
             guard let self else { return }
-            guard self.lastEvent == event, !self.state.isPlaying, self.state.hasMedia else { return }
+            // Any newer page event (e.g. the next track starting to load) cancels the check:
+            // skipping quickly through tracks emits `emptied` repeatedly and is not a failure.
+            guard self.eventSerial == serial, self.lastEvent == event,
+                  !self.state.isPlaying, self.state.hasMedia else { return }
             // Paused by the user is not a failure: only recover when it looks stuck.
             if event == "error" || event == "stalled" || event == "emptied" {
                 self.recover(reason: "stuck after \(event)")
@@ -730,6 +743,38 @@ final class WebPlayer: NSObject {
         }
     }
 
+    // MARK: - Pause caused by backgrounding
+
+    /// When the app was playing as it went to the background and the media pauses within a few
+    /// seconds, that pause was not the user's: resume it (and keep trying briefly). Logs from a
+    /// device show `didEnterBackground` followed by a `pause` while the page still reports
+    /// itself visible, and on some runs nothing resumed it until the app came back.
+    private func resumeIfPausedByBackgrounding() {
+        guard self.playingWhenBackgrounded, !self.resumedAfterBackgroundPause, !self.isInCall,
+              Date().timeIntervalSince(self.backgroundedAt) < 4
+        else { return }
+        self.resumedAfterBackgroundPause = true
+        self.log.log("bg", "paused by backgrounding: resuming")
+
+        var task = UIBackgroundTaskIdentifier.invalid
+        task = UIApplication.shared.beginBackgroundTask(withName: "resume-after-background-pause") {
+            UIApplication.shared.endBackgroundTask(task)
+        }
+        Task {
+            _ = await Task.detached(priority: .userInitiated) { Self.activateAudioSession(configuring: false) }.value
+            for attempt in 1 ... 4 {
+                self.releasePageInterruption()
+                self.command("play")
+                try? await Task.sleep(for: .milliseconds(900))
+                if self.state.isPlaying {
+                    self.log.log("bg", "resumed (attempt \(attempt))")
+                    break
+                }
+            }
+            if task != .invalid { UIApplication.shared.endBackgroundTask(task) }
+        }
+    }
+
     // MARK: - Phone calls
 
     /// Pauses when a call rings or connects and resumes after it ends, if it was playing.
@@ -798,7 +843,13 @@ final class WebPlayer: NSObject {
             Task { [weak self] in
                 for await _ in NotificationCenter.default.notifications(named: name) {
                     self?.log.log("app", label)
+                    if label == "didEnterBackground", let self {
+                        self.playingWhenBackgrounded = self.state.isPlaying && !self.isInCall
+                        self.backgroundedAt = Date()
+                        self.resumedAfterBackgroundPause = false
+                    }
                     if label == "willEnterForeground" {
+                        self?.playingWhenBackgrounded = false
                         self?.refreshState()
                         self?.callStateChanged()
                     }
