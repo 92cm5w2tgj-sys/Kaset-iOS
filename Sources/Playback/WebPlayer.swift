@@ -89,7 +89,7 @@ final class WebPlayer: NSObject {
         self.webView.load(URLRequest(url: Self.homeURL))
         self.restoreSavedSession()
         self.startPathMonitor()
-        self.observeCalls()
+        if Self.handlesPhoneCalls { self.observeCalls() }
     }
 
     // MARK: - Web view
@@ -518,6 +518,8 @@ final class WebPlayer: NSObject {
             self.log.log("keepalive", "AudioContext \(message["state"] as? String ?? "?")")
         case "ms":
             self.log.log("remote", "mediaSession \(message["action"] as? String ?? "?") \(message["msg"] as? String ?? "")")
+        case "bg":
+            self.log.log("bg", "page undid a pause caused by backgrounding (\(message["via"] as? String ?? "?"))")
         case "ad":
             self.log.log("ad", "skip via \(message["via"] as? String ?? "?")")
         case "dialog":
@@ -781,6 +783,11 @@ final class WebPlayer: NSObject {
     /// `CXCallObserver` needs no permission or entitlement. Relying only on the audio session
     /// interruption was not enough: the page's keep-alive audio kept the session busy and the
     /// music stayed audible during the call.
+    /// Settings → Diagnostics. Needs a relaunch to take effect.
+    static var handlesPhoneCalls: Bool {
+        UserDefaults.standard.object(forKey: "settings.handlePhoneCalls") as? Bool ?? true
+    }
+
     private func observeCalls() {
         let delegate = CallDelegate { [weak self] in
             Task { @MainActor in self?.callStateChanged() }
@@ -834,6 +841,7 @@ final class WebPlayer: NSObject {
 
     private func observeLifecycle() {
         let names: [(Notification.Name, String)] = [
+            (UIApplication.willResignActiveNotification, "willResignActive"),
             (UIApplication.didEnterBackgroundNotification, "didEnterBackground"),
             (UIApplication.willEnterForegroundNotification, "willEnterForeground"),
             (UIApplication.protectedDataWillBecomeUnavailableNotification, "deviceLocking"),
@@ -843,6 +851,13 @@ final class WebPlayer: NSObject {
             Task { [weak self] in
                 for await _ in NotificationCenter.default.notifications(named: name) {
                     self?.log.log("app", label)
+                    if label == "willResignActive", let self, self.state.isPlaying, !self.isInCall {
+                        // Arm the page's guard before iOS gets the chance to pause the media.
+                        self.webView.evaluateJavaScript(
+                            "window.__kaset ? window.__kaset.setBackgroundGuard(6000) : 'no-page'",
+                            completionHandler: nil
+                        )
+                    }
                     if label == "didEnterBackground", let self {
                         self.playingWhenBackgrounded = self.state.isPlaying && !self.isInCall
                         self.backgroundedAt = Date()

@@ -85,7 +85,10 @@ enum PlayerScripts {
             if (p && p.playerApi) { return p.playerApi; }
             return document.getElementById('movie_player');
           };
+          // When the user (or a command from the app) caused a pause, the guard below must not undo it.
+          const markUserAction = () => { window.__kasetUserActionAt = Date.now(); };
           const click = (name) => {
+            if (name === 'playPause') { markUserAction(); }
             const b = control(name);
             if (b) { b.click(); return 'clicked'; }
             const m = media();
@@ -228,6 +231,19 @@ enum PlayerScripts {
               }
             }, true);
           });
+          // Backgrounding can make WebKit pause the media a few milliseconds after the app resigns
+          // active. The app arms this guard just before that; the pause is undone inside the same
+          // JS turn, so the gap is a few milliseconds instead of a round trip through Swift.
+          document.addEventListener('pause', (e) => {
+            const until = window.__kasetBackgroundGuardUntil || 0;
+            if (Date.now() > until || window.__kasetInterrupted) { return; }
+            const t = e.target;
+            if (!t || !t.tagName || !/^(VIDEO|AUDIO)$/.test(t.tagName) || t.ended) { return; }
+            if (Date.now() - (window.__kasetUserActionAt || 0) < 2000) { return; }
+            const p = t.play();
+            if (p && p.catch) { p.catch(() => {}); }
+            post({ kind: 'bg', via: 'js-resume' });
+          }, true);
           window.addEventListener('visibilitychange', () => {
             post(state('visibilitychange', false));
             keepAlive();
@@ -342,7 +358,7 @@ enum PlayerScripts {
               if (p && p.catch) { p.catch((err) => post({ kind: 'playerr', msg: String(err) })); }
               return 'play()';
             },
-            pause: () => { const m = media(); if (!m) { return 'no-media'; } m.pause(); return 'pause()'; },
+            pause: () => { const m = media(); if (!m) { return 'no-media'; } markUserAction(); m.pause(); return 'pause()'; },
             toggle: () => click('playPause'),
             next: () => click('next'),
             previous: () => click('previous'),
@@ -529,6 +545,10 @@ enum PlayerScripts {
             },
             // A phone call (or similar) takes the audio: pause the media and the keep-alive
             // context, and keep the page from resuming either until it is over.
+            setBackgroundGuard: (ms) => {
+              window.__kasetBackgroundGuardUntil = Date.now() + ms;
+              return 'armed';
+            },
             setInterrupted: (flag) => {
               window.__kasetInterrupted = !!flag;
               const m = media();

@@ -10,6 +10,7 @@ struct SettingsView: View {
     @AppStorage(Haptics.storageKey) private var haptics = true
     @AppStorage("nativeNowPlaying") private var nativeNowPlaying = true
     @AppStorage(AdSkip.storageKey) private var adAutoSkip = false
+    @AppStorage("settings.handlePhoneCalls") private var handlePhoneCalls = true
 
     @State private var accounts: [UserAccount] = []
     @State private var isSwitching = false
@@ -46,6 +47,7 @@ struct SettingsView: View {
 
                 Section("Diagnostics") {
                     Toggle("Native Now Playing card", isOn: self.$nativeNowPlaying)
+                    Toggle("Pause for phone calls (relaunch)", isOn: self.$handlePhoneCalls)
                     Button("Inspect queue (log)") { self.environment.player.inspectQueue() }
                     NavigationLink("Playback debug") { PlaybackDebugView(player: self.environment.player) }
                     NavigationLink("API debug") { APIDebugView(client: self.environment.client, player: self.environment.player) }
