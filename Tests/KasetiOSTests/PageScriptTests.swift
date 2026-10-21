@@ -51,7 +51,7 @@ struct PageScriptTests {
         #expect(context.evaluateScript("typeof window.__kaset").toString() == "object")
         #expect(context.evaluateScript("__posts.length > 0 && __posts[0].kind").toString() == "boot")
         for command in ["play", "pause", "toggle", "next", "previous", "seek", "state",
-                        "playQueueIndex", "removeQueueIndexAsync", "inspectQueue", "shuffle", "repeat", "setInterrupted", "setBackgroundGuard"]
+                        "playQueueIndex", "removeQueueIndexAsync", "inspectQueue", "health", "shuffle", "repeat", "setInterrupted", "setBackgroundGuard"]
         {
             #expect(
                 context.evaluateScript("typeof window.__kaset.\(command)").toString() == "function",
@@ -67,6 +67,25 @@ struct PageScriptTests {
         #expect(context.evaluateScript("window.__kaset.seek(10)").toString() == "no-media")
         #expect(context.evaluateScript("typeof window.__kaset.inspectQueue()").toString() == "string")
         #expect(context.exception == nil)
+    }
+
+    @Test func healthProbeReportsMissingPartsWithoutADOM() throws {
+        let context = self.makeContext()
+        context.evaluateScript(PlayerScripts.page)
+        let json = try #require(context.evaluateScript("JSON.stringify(window.__kaset.health())").toString())
+        #expect(context.exception == nil, "health() threw: \(context.exception?.toString() ?? "")")
+
+        let report = try #require(PlayerHealthReport.parse(json))
+        #expect(report.hasTrack == false)
+        #expect(report.checks.first?.id == "page")
+        #expect(report.checks.first?.status == .ok)
+        let byId = Dictionary(uniqueKeysWithValues: report.checks.map { ($0.id, $0) })
+        #expect(byId["media"]?.status == .failing)
+        #expect(byId["next"]?.status == .failing)
+        // Track-only checks wait for a track instead of failing.
+        #expect(byId["queue"]?.status == .needsTrack)
+        #expect(byId["menu"]?.status == .needsTrack)
+        #expect(report.failing.allSatisfy { !$0.needsTrack })
     }
 
     @Test func injectedScriptsAreSyntacticallyValid() {

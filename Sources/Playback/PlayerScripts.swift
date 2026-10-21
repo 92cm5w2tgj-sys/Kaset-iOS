@@ -560,6 +560,49 @@ enum PlayerScripts {
               }
               return flag ? 'interrupted' : 'cleared';
             },
+            // Read-only probe of every page part the app drives, for the player health screen.
+            // Nothing is clicked; `track` marks checks that only make sense with a track loaded.
+            health: () => {
+              const checks = [];
+              const add = (id, ok, detail, track) => checks.push({ id: id, ok: !!ok, detail: detail || '', track: !!track });
+              const m = media();
+              const hasTrack = !!m && isFinite(m.duration) && m.duration > 0;
+              add('media', m, m ? m.tagName.toLowerCase() + ' readyState=' + m.readyState : 'no video/audio element', false);
+              const api = playerApi();
+              const apiOk = !!api && typeof api.seekTo === 'function' && typeof api.getVideoData === 'function';
+              add('playerApi', apiOk, api ? (api.id || api.tagName || 'playerApi') + (apiOk ? '' : ' without seekTo/getVideoData') : 'absent', false);
+              const app = document.querySelector('ytmusic-app');
+              add('router', app && typeof app.resolveCommand === 'function', app ? '' : 'no ytmusic-app', false);
+              const md = navigator.mediaSession && navigator.mediaSession.metadata;
+              add('mediaSession', md && md.title, md && md.title ? md.title : 'no metadata', true);
+              let bar = null;
+              try { bar = __kasetPlayerBar(); } catch (e) {}
+              add('playerBar', bar, bar ? bar.tagName.toLowerCase() : 'absent', false);
+              ['playPause', 'next', 'previous'].forEach((name) => {
+                let el = null;
+                try { el = __kasetPlayerBarElement(name); } catch (e) {}
+                const fallback = !el && legacy[name] ? document.querySelector(legacy[name]) : null;
+                add(name, el || fallback, el ? '' : (fallback ? 'legacy selector only' : 'not found'), false);
+              });
+              const sb = shuffleButton();
+              add('shuffle', sb, sb ? 'on=' + shuffleOn() : 'not found', false);
+              const repeatAttr = bar && (bar.hasAttribute('repeat-mode_') || bar.hasAttribute('repeat-mode'));
+              add('repeat', repeatButton() && repeatAttr, (repeatButton() ? 'button' : 'no button') + ', ' + (repeatAttr ? 'mode=' + repeatMode() : 'no repeat-mode attribute'), false);
+              let menu = null;
+              try { menu = __kasetPlayerBarElement('menu'); } catch (e) {}
+              if (!menu && bar) {
+                menu = Array.from(bar.querySelectorAll('button')).find((b) => (b.getAttribute('aria-label') || '').toLowerCase() === 'action menu') || null;
+              }
+              add('menu', menu, menu ? '' : 'not found', true);
+              const queueEl = document.querySelector('ytmusic-player-queue');
+              const items = queue();
+              add('queue', queueEl && items.length > 0, (queueEl ? 'component ok' : 'no ytmusic-player-queue') + ', ' + items.length + ' items', true);
+              const withIds = items.filter((e) => e.videoId).length;
+              add('queueIds', items.length > 0 && withIds === items.length, withIds + '/' + items.length + ' with a video id', true);
+              const current = items.filter((e) => e.current).length;
+              add('queueCurrent', current === 1, current + ' marked current', true);
+              return { hasTrack: hasTrack, checks: checks };
+            },
             shuffle: () => { const b = shuffleButton(); if (!b) { return 'missing:shuffle'; } b.click(); return 'clicked'; },
             repeat: () => { const b = repeatButton(); if (!b) { return 'missing:repeat'; } b.click(); return 'clicked'; },
             seek: (t) => {

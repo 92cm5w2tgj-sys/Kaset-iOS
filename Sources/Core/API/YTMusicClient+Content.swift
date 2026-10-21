@@ -6,6 +6,11 @@ import Foundation
 extension YTMusicClient {
     // MARK: - Mood / genre category
 
+    /// The sections of any browse page, e.g. the one behind a shelf's "See all".
+    func browseSections(browseId: String, params: String?) async throws -> HomeResponse {
+        try await self.getMoodCategory(browseId: browseId, params: params)
+    }
+
     func getMoodCategory(browseId: String, params: String?) async throws -> HomeResponse {
         var body: [String: Any] = ["browseId": browseId]
         if let params { body["params"] = params }
@@ -136,17 +141,23 @@ extension YTMusicClient {
         return try SongMetadataParser.parse(data, videoId: videoId)
     }
 
-    func getLyrics(videoId: String) async throws -> Lyrics {
+    /// Timed lyrics when the `next` response carries them (kaset `getTimedLyrics`), otherwise
+    /// the plain lyrics behind the lyrics tab.
+    func getLyrics(videoId: String) async throws -> LyricResult {
         let nextBody: [String: Any] = [
             "videoId": videoId,
             "enablePersistentPlaylistPanel": true,
             "isAudioOnly": true,
             "tunerSettingValue": "AUTOMIX_SETTING_NORMAL",
         ]
-        let nextData = try await self.request("next", body: nextBody)
+        // Same body as `getSong`, so this usually comes from the cache.
+        let nextData = try await self.request("next", body: nextBody, ttl: APICache.TTL.songMetadata)
+        if let synced = LyricsParser.extractTimedLyrics(from: nextData) { return .synced(synced) }
         guard let browseId = LyricsParser.extractLyricsBrowseId(from: nextData) else { return .unavailable }
         let data = try await self.request("browse", body: ["browseId": browseId], ttl: APICache.TTL.lyrics)
-        return LyricsParser.parse(from: data)
+        if let synced = LyricsParser.extractTimedLyrics(from: data) { return .synced(synced) }
+        let plain = LyricsParser.parse(from: data)
+        return plain.isAvailable ? .plain(plain) : .unavailable
     }
 
     /// like / dislike / remove rating.

@@ -48,6 +48,16 @@ struct SettingsView: View {
                 Section("Diagnostics") {
                     Toggle("Native Now Playing card", isOn: self.$nativeNowPlaying)
                     Toggle("Pause for phone calls (relaunch)", isOn: self.$handlePhoneCalls)
+                    NavigationLink {
+                        PlayerHealthView(player: self.environment.player)
+                    } label: {
+                        let failing = self.environment.player.healthReport?.failing.count ?? 0
+                        LabeledContent("Player health") {
+                            if failing > 0 {
+                                Text("\(failing) failing").foregroundStyle(.red)
+                            }
+                        }
+                    }
                     Button("Inspect queue (log)") { self.environment.player.inspectQueue() }
                     NavigationLink("Playback debug") { PlaybackDebugView(player: self.environment.player) }
                     NavigationLink("API debug") { APIDebugView(client: self.environment.client, player: self.environment.player) }

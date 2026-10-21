@@ -45,7 +45,10 @@ final class BrowsePageModel {
             guard !items.isEmpty else { return nil }
             return items.count == section.items.count
                 ? section
-                : HomeSection(id: section.id, title: section.title, items: items, isChart: section.isChart)
+                : HomeSection(
+                    id: section.id, title: section.title, items: items,
+                    isChart: section.isChart, moreEndpoint: section.moreEndpoint
+                )
         }
     }
 
@@ -92,7 +95,7 @@ struct BrowsePageView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 32) {
                         ForEach(self.model.sections) { section in
-                            ShelfView(title: section.title, entities: section.items.map(MediaEntity.init))
+                            ShelfView(section: section)
                                 .task { await self.model.loadMoreIfNeeded(after: section) }
                         }
                         if self.model.isLoadingMore {
@@ -112,6 +115,8 @@ struct BrowsePageView: View {
 struct ShelfView: View {
     let title: String
     let entities: [MediaEntity]
+    /// Shown as a "See all" link next to the title.
+    var seeAll: SeeAllDestination?
 
     private static let chipMinimumWidth: CGFloat = 92
     private static let chipSpacing: CGFloat = 10
@@ -139,10 +144,17 @@ struct ShelfView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             if !self.title.isEmpty {
-                Text(self.title)
-                    .font(.title2.weight(.bold))
-                    .padding(.horizontal, 20)
-                    .accessibilityAddTraits(.isHeader)
+                HStack(alignment: .firstTextBaseline) {
+                    Text(self.title)
+                        .font(.title2.weight(.bold))
+                        .accessibilityAddTraits(.isHeader)
+                    Spacer(minLength: 8)
+                    if let seeAll {
+                        NavigationLink("See all", value: seeAll)
+                            .font(.subheadline)
+                    }
+                }
+                .padding(.horizontal, 20)
             }
             if self.isMoodGrid {
                 let canCollapse = self.entities.count > self.collapsedLimit
@@ -193,6 +205,89 @@ struct ShelfView: View {
                     .padding(.vertical, 4)
                 }
             }
+        }
+    }
+}
+
+extension ShelfView {
+    /// A browse section, with its "See all" link when the shelf has one.
+    init(section: HomeSection) {
+        self.init(
+            title: section.title,
+            entities: section.items.map(MediaEntity.init),
+            seeAll: section.moreEndpoint.map { SeeAllDestination(title: section.title, endpoint: $0) }
+        )
+    }
+}
+
+/// Everything behind a shelf's "See all": the playlist page, or the sections of the browse
+/// page as grids.
+struct SeeAllView: View {
+    @Environment(AppEnvironment.self) private var environment
+
+    let destination: SeeAllDestination
+
+    @State private var sections: [HomeSection] = []
+    @State private var phase: Phase = .loading
+
+    private enum Phase: Equatable {
+        case loading, loaded, failed(String)
+    }
+
+    var body: some View {
+        if self.destination.endpoint.pageType == .playlist {
+            PlaylistDetailView(id: self.destination.endpoint.browseId, fallbackTitle: self.destination.title, thumbnailURL: nil)
+        } else {
+            self.grid
+                .navigationTitle(self.destination.title)
+                .navigationBarTitleDisplayMode(.inline)
+                .task { await self.load() }
+        }
+    }
+
+    @ViewBuilder
+    private var grid: some View {
+        switch self.phase {
+        case .loading:
+            ProgressView()
+        case let .failed(message):
+            LoadFailureView(message: message) { Task { await self.load() } }
+        case .loaded:
+            if self.sections.isEmpty {
+                ContentUnavailableView("Nothing here yet.", systemImage: "tray")
+            } else {
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: 28) {
+                        ForEach(self.sections) { section in
+                            // A single section is the page itself; its title repeats the navigation title.
+                            if self.sections.count > 1 {
+                                Text(section.title)
+                                    .font(.title2.weight(.bold))
+                                    .accessibilityAddTraits(.isHeader)
+                            }
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: 150), spacing: 16, alignment: .top)], spacing: 20) {
+                                ForEach(section.items.map(MediaEntity.init)) { entity in
+                                    MediaActions(entity: entity) { MediaCard(entity: entity, width: nil) }
+                                }
+                            }
+                        }
+                    }
+                    .padding(20)
+                }
+            }
+        }
+    }
+
+    private func load() async {
+        self.phase = .loading
+        do {
+            let endpoint = self.destination.endpoint
+            self.sections = try await self.environment.client
+                .browseSections(browseId: endpoint.browseId, params: endpoint.params).sections
+            self.phase = .loaded
+        } catch is CancellationError {
+        } catch {
+            self.phase = .failed(error.localizedDescription)
         }
     }
 }

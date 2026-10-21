@@ -22,24 +22,13 @@ enum ArtistShelfKind: Hashable {
 
 // MARK: - ShelfMoreEndpoint
 
-/// A browse endpoint captured from a carousel shelf's `moreContentButton`.
+/// A browse endpoint captured from a carousel shelf's `moreContentButton` (the "More" /
+/// "See all" link on Home and artist shelves).
 ///
-/// Send `browseId` (+ optional `params`) to the standard `/browse` API to
-/// fetch the full list behind a shelf's "See all" affordance. The `pageType`
-/// dictates which parser and which destination view to route to:
-///
-/// - `MUSIC_PAGE_TYPE_PLAYLIST` → reuse the existing `Playlist` navigation
-///   and `PlaylistDetailView`.
-/// - `MUSIC_PAGE_TYPE_ARTIST_DISCOGRAPHY` → `ArtistDiscographyView` (grid of
-///   `musicTwoRowItemRenderer` album cards).
-/// - `MUSIC_PAGE_TYPE_ARTIST` → `ArtistEpisodesListView` (vertical list built
-///   from a filtered artist-page response; the filter is encoded in
-///   `params`).
-///
-/// Unknown `pageType` values should render no See-all link — we only surface
-/// affordances we know how to navigate to.
+/// `MUSIC_PAGE_TYPE_PLAYLIST` opens the playlist page; anything else is fetched with
+/// `/browse` (`browseId` + `params`) and shown as a grid of the sections it returns.
 struct ShelfMoreEndpoint: Hashable {
-    /// Page-type tags observed in practice on artist-page shelves.
+    /// Page-type tags observed in practice on shelves.
     enum PageType: String, Hashable {
         case playlist = "MUSIC_PAGE_TYPE_PLAYLIST"
         case artist = "MUSIC_PAGE_TYPE_ARTIST"
@@ -48,5 +37,40 @@ struct ShelfMoreEndpoint: Hashable {
 
     let browseId: String
     let params: String?
-    let pageType: PageType
+    /// `nil` when the endpoint carries no page type, or one not listed above.
+    let pageType: PageType?
+
+    /// Reads `header.musicCarouselShelfBasicHeaderRenderer.moreContentButton` of a
+    /// `musicCarouselShelfRenderer`.
+    static func fromCarousel(_ data: [String: Any]) -> ShelfMoreEndpoint? {
+        guard let header = data["header"] as? [String: Any],
+              let basicHeader = header["musicCarouselShelfBasicHeaderRenderer"] as? [String: Any],
+              let moreButton = basicHeader["moreContentButton"] as? [String: Any],
+              let buttonRenderer = moreButton["buttonRenderer"] as? [String: Any]
+        else {
+            return nil
+        }
+
+        let endpointContainer = (buttonRenderer["command"] as? [String: Any])
+            ?? (buttonRenderer["navigationEndpoint"] as? [String: Any])
+
+        guard let browseEndpoint = endpointContainer?["browseEndpoint"] as? [String: Any],
+              let browseId = browseEndpoint["browseId"] as? String, !browseId.isEmpty
+        else {
+            return nil
+        }
+
+        let supportedConfigs = browseEndpoint["browseEndpointContextSupportedConfigs"] as? [String: Any]
+        let musicConfig = supportedConfigs?["browseEndpointContextMusicConfig"] as? [String: Any]
+        let pageType = (musicConfig?["pageType"] as? String).flatMap(PageType.init(rawValue:))
+        return ShelfMoreEndpoint(browseId: browseId, params: browseEndpoint["params"] as? String, pageType: pageType)
+    }
+}
+
+// MARK: - SeeAllDestination
+
+/// Navigation value behind a shelf's "See all" link.
+struct SeeAllDestination: Hashable {
+    let title: String
+    let endpoint: ShelfMoreEndpoint
 }

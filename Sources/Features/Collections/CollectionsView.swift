@@ -34,7 +34,7 @@ struct CollectionsView: View {
                         case .liked: LikedMusicView()
                         case .history:
                             if let history = self.history {
-                                BrowsePageView(model: history, emptyMessage: "Nothing played yet.")
+                                HistoryView(model: history)
                             } else {
                                 ProgressView()
                             }
@@ -79,6 +79,56 @@ struct CollectionsView: View {
             let model = self.history ?? BrowsePageModel(type: .history, client: self.environment.client)
             self.history = model
             await model.load(force: true)
+        }
+    }
+}
+
+// MARK: - History
+
+/// Recently played, one section per period as YouTube Music groups them (Today, Yesterday,
+/// This week, …). Songs play with their radio, like everywhere else outside a playlist.
+struct HistoryView: View {
+    @Environment(AppEnvironment.self) private var environment
+
+    let model: BrowsePageModel
+
+    var body: some View {
+        switch self.model.phase {
+        case .idle, .loading:
+            ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
+        case let .failed(message):
+            LoadFailureView(message: message) { Task { await self.model.load(force: true) } }
+        case .loaded:
+            if self.model.sections.isEmpty {
+                ContentUnavailableView("Nothing played yet.", systemImage: "clock")
+            } else {
+                List {
+                    ForEach(self.model.sections) { section in
+                        Section(section.title) {
+                            // The same song can appear twice in a period.
+                            ForEach(Array(section.items.enumerated()), id: \.offset) { _, item in
+                                self.row(item)
+                            }
+                        }
+                        .task { await self.model.loadMoreIfNeeded(after: section) }
+                    }
+                    if self.model.isLoadingMore {
+                        ProgressView().frame(maxWidth: .infinity)
+                    }
+                }
+                .listStyle(.plain)
+                .refreshable { await self.model.load(force: true) }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func row(_ item: HomeSectionItem) -> some View {
+        if case let .song(song) = item {
+            TrackRow(song: song) { self.environment.player.startRadio(videoId: song.videoId) }
+        } else {
+            let entity = MediaEntity(item)
+            MediaActions(entity: entity) { MediaRow(entity: entity) }
         }
     }
 }

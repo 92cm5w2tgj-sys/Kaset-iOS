@@ -1,7 +1,7 @@
 import SwiftUI
 
 extension View {
-    /// Registers the screens a `MediaEntity` navigates to. Apply once per `NavigationStack`.
+    /// Registers the screens a `MediaEntity` or a "See all" link navigates to. Apply once per `NavigationStack`.
     func entityDestinations() -> some View {
         self.navigationDestination(for: MediaEntity.self) { entity in
             switch entity.target {
@@ -15,6 +15,7 @@ extension View {
                 ContentUnavailableView(entity.title, systemImage: "music.note")
             }
         }
+        .navigationDestination(for: SeeAllDestination.self) { SeeAllView(destination: $0) }
     }
 }
 
@@ -44,7 +45,7 @@ struct MoodCategoryView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 24) {
                         ForEach(self.sections) { section in
-                            ShelfView(title: section.title, entities: section.items.map(MediaEntity.init))
+                            ShelfView(section: section)
                         }
                     }
                     .padding(.vertical)

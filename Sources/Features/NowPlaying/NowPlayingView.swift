@@ -11,7 +11,9 @@ final class NowPlayingModel {
     private(set) var likeStatus: LikeStatus = .indifferent
     /// Artists of the current track, with ids, from the song metadata.
     private(set) var artists: [Artist] = []
-    private(set) var lyrics: Lyrics?
+    /// Lyrics of `lyricsVideoId`; `nil` until loaded.
+    private(set) var lyrics: LyricResult?
+    private(set) var lyricsVideoId: String?
     private(set) var isLoadingLyrics = false
     /// Average colour of the current artwork; drives the background gradient.
     private(set) var artworkColor: UIColor?
@@ -26,7 +28,6 @@ final class NowPlayingModel {
     func trackChanged(to videoId: String?) async {
         guard videoId != self.loadedVideoId else { return }
         self.loadedVideoId = videoId
-        self.lyrics = nil
         self.likeStatus = .indifferent
         self.artists = []
         guard let videoId else { return }
@@ -86,11 +87,42 @@ final class NowPlayingModel {
         }
     }
 
-    func loadLyrics(videoId: String) async {
-        guard self.lyrics == nil else { return }
+    /// Lyrics for a track, `nil` while they load or when they belong to another track.
+    func lyrics(for videoId: String?) -> LyricResult? {
+        guard let videoId, videoId == self.lyricsVideoId else { return nil }
+        return self.lyrics
+    }
+
+    /// YouTube Music and LRCLib are asked in parallel; synced lyrics win over plain ones, and
+    /// YouTube Music wins a tie.
+    func loadLyrics(videoId: String, title: String?, artist: String?, duration: TimeInterval) async {
+        guard videoId != self.lyricsVideoId || self.lyrics == nil else { return }
+        self.lyricsVideoId = videoId
+        self.lyrics = nil
         self.isLoadingLyrics = true
-        defer { self.isLoadingLyrics = false }
-        self.lyrics = (try? await self.client.getLyrics(videoId: videoId)) ?? .unavailable
+
+        let client = self.client
+        async let youtube = (try? await client.getLyrics(videoId: videoId)) ?? .unavailable
+        async let lrclib: LyricResult = if let title, let artist {
+            await LRCLibClient.search(title: title, artist: artist, duration: duration > 0 ? duration : nil)
+        } else {
+            .unavailable
+        }
+        let result = Self.preferred(await youtube, await lrclib)
+
+        guard self.lyricsVideoId == videoId else { return }
+        self.lyrics = result
+        self.isLoadingLyrics = false
+    }
+
+    static func preferred(_ youtube: LyricResult, _ lrclib: LyricResult) -> LyricResult {
+        for candidate in [youtube, lrclib] {
+            if case let .synced(lyrics) = candidate, !lyrics.isEmpty { return candidate }
+        }
+        for candidate in [youtube, lrclib] where candidate.isAvailable {
+            return candidate
+        }
+        return .unavailable
     }
 }
 
@@ -199,7 +231,7 @@ struct NowPlayingView: View {
             videoId: state.videoId ?? "", title: state.title
         )
         .sheet(isPresented: self.$isLyricsPresented) {
-            LyricsSheet(model: self.model, videoId: state.videoId)
+            LyricsSheet(model: self.model)
         }
     }
 
@@ -238,6 +270,9 @@ struct NowPlayingView: View {
                         Button("Add to Playlist…", systemImage: "text.badge.plus") { self.isAddToPlaylistPresented = true }
                     }
                     Button("Play Next", systemImage: "text.insert") { self.environment.player.playNext(videoId: videoId) }
+                    Button("Start Radio", systemImage: "dot.radiowaves.left.and.right") {
+                        self.environment.player.startRadio(videoId: videoId)
+                    }
                     if let url = URL(string: "https://music.youtube.com/watch?v=\(videoId)") {
                         ShareLink(item: url) { Label("Share", systemImage: "square.and.arrow.up") }
                     }
@@ -481,38 +516,4 @@ struct AirPlayButton: UIViewRepresentable {
     }
 
     func updateUIView(_: AVRoutePickerView, context _: Context) {}
-}
-
-struct LyricsSheet: View {
-    @Environment(\.dismiss) private var dismiss
-
-    let model: NowPlayingModel?
-    let videoId: String?
-
-    var body: some View {
-        NavigationStack {
-            ScrollView {
-                if let model, model.isLoadingLyrics {
-                    ProgressView().padding(.top, 40)
-                } else if let lyrics = model?.lyrics, lyrics.isAvailable {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text(lyrics.text).font(.title3).frame(maxWidth: .infinity, alignment: .leading)
-                        if let source = lyrics.source {
-                            Text(source).font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                    .padding()
-                } else {
-                    ContentUnavailableView("No lyrics", systemImage: "quote.bubble")
-                        .padding(.top, 40)
-                }
-            }
-            .navigationTitle("Lyrics")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { self.dismiss() } } }
-        }
-        .task {
-            if let videoId { await self.model?.loadLyrics(videoId: videoId) }
-        }
-    }
 }

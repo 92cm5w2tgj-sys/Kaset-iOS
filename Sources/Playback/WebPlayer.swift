@@ -43,6 +43,8 @@ final class WebPlayer: NSObject {
     /// When the page last reported anything, and the page's address; for the debug readout.
     private(set) var lastMessageAt: Date?
     private(set) var pageURL: String?
+    /// Last player health probe (run a few seconds after each track change, or on demand).
+    private(set) var healthReport: PlayerHealthReport?
 
     @ObservationIgnored private let log = SpikeLog.shared
     @ObservationIgnored private let proxy = MessageProxy()
@@ -194,6 +196,11 @@ final class WebPlayer: NSObject {
         self.webView.load(URLRequest(url: url))
     }
 
+    /// Plays the song followed by its radio (YouTube Music's endless queue of similar songs).
+    func startRadio(videoId: String) {
+        self.play(videoId: videoId, playlistId: "RDAMVM\(videoId)")
+    }
+
     /// Jumps to / removes an entry of the page's queue by its position.
     func playQueueEntry(at index: Int) { self.command("playQueueIndex", argument: String(index)) }
     func removeQueueEntry(at index: Int) {
@@ -213,6 +220,36 @@ final class WebPlayer: NSObject {
                 let text = (result as? String) ?? error?.localizedDescription ?? "nil"
                 for line in text.split(separator: "\n") { self?.log.log("inspect", String(line)) }
             }
+        }
+    }
+
+    /// Probes the page parts the app drives (read-only) and keeps the result in `healthReport`.
+    /// Checks that start failing are written to the log.
+    @discardableResult
+    func checkHealth() async -> PlayerHealthReport {
+        let js = "JSON.stringify(window.__kaset && window.__kaset.health ? window.__kaset.health() : null)"
+        let report: PlayerHealthReport
+        do {
+            let text = try await self.webView.evaluateJavaScript(js) as? String ?? "null"
+            report = PlayerHealthReport.parse(text) ?? .unreachable(self.hasLoadedPage ? "page script not running" : "page not loaded")
+        } catch {
+            report = .unreachable(error.localizedDescription)
+        }
+        let previouslyFailing = Set(self.healthReport?.failing.map(\.id) ?? [])
+        for check in report.failing where !previouslyFailing.contains(check.id) {
+            self.log.log("health", "FAILING \(check.id): \(check.detail)")
+        }
+        self.healthReport = report
+        return report
+    }
+
+    /// Runs the probe once the new track has had time to fill the player bar and queue.
+    private func scheduleHealthCheck() {
+        guard let videoId = self.state.videoId else { return }
+        Task { [weak self] in
+            try? await Task.sleep(for: .seconds(6))
+            guard let self, self.state.videoId == videoId else { return }
+            await self.checkHealth()
         }
     }
 
@@ -462,6 +499,7 @@ final class WebPlayer: NSObject {
             }
             if self.state.videoId != previousID {
                 self.log.log("track", "\(self.state.title ?? "?") — \(self.state.artist ?? "?") [\(self.state.videoId ?? "-")]")
+                self.scheduleHealthCheck()
             }
             if message["hb"] as? Bool != true {
                 self.log.log("media", "\(message["ev"] as? String ?? "?") playing=\(self.state.isPlaying) "

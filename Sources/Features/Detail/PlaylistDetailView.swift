@@ -390,6 +390,9 @@ struct TrackRow: View {
     @ViewBuilder
     private var menuItems: some View {
         Button("Play Next", systemImage: "text.insert") { self.environment.player.playNext(videoId: self.song.videoId) }
+        Button("Start Radio", systemImage: "dot.radiowaves.left.and.right") {
+            self.environment.player.startRadio(videoId: self.song.videoId)
+        }
         Button("Add to Queue", systemImage: "text.append") { self.environment.player.addToQueue(videoId: self.song.videoId) }
         if self.environment.auth.state == .signedIn {
             Button("Add to Playlist…", systemImage: "text.badge.plus") { self.isAddToPlaylistPresented = true }

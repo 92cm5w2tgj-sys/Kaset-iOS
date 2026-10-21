@@ -11,12 +11,15 @@ struct MediaCard: View {
     @Environment(AppEnvironment.self) private var environment
 
     let entity: MediaEntity
-    var width: CGFloat = 156
+    /// `nil` fills the proposed width (grids).
+    var width: CGFloat? = 156
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             ArtworkView(url: self.entity.thumbnailURL)
                 .frame(width: self.width, height: self.width)
+                .frame(maxWidth: self.width == nil ? .infinity : nil)
+                .aspectRatio(1, contentMode: .fit)
                 .clipShape(self.entity.isCircular ? AnyShape(Circle()) : AnyShape(RoundedRectangle(cornerRadius: 10, style: .continuous)))
                 .overlay {
                     if self.entity.isCircular {
@@ -40,6 +43,7 @@ struct MediaCard: View {
             }
         }
         .frame(width: self.width, alignment: .leading)
+        .frame(maxWidth: self.width == nil ? .infinity : nil, alignment: .leading)
         .multilineTextAlignment(.leading)
     }
 
@@ -167,6 +171,9 @@ struct MediaActions<Content: View>: View {
             }
             Button("Add to Queue", systemImage: "text.append") {
                 self.environment.player.addToQueue(videoId: videoId)
+            }
+            Button("Start Radio", systemImage: "dot.radiowaves.left.and.right") {
+                self.environment.player.startRadio(videoId: videoId)
             }
             if self.isSignedIn {
                 Button("Add to Playlist…", systemImage: "text.badge.plus") {

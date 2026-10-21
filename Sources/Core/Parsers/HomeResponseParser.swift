@@ -170,7 +170,8 @@ enum HomeResponseParser {
             id: stableId,
             title: title,
             items: items,
-            isChart: ParsingHelpers.isChartSection(title)
+            isChart: ParsingHelpers.isChartSection(title),
+            moreEndpoint: ShelfMoreEndpoint.fromCarousel(data)
         )
     }
 

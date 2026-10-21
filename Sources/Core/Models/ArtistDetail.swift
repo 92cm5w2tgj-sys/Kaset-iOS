@@ -13,6 +13,8 @@ enum ArtistDetailSectionContent: Hashable {
 struct ArtistDetailSection: Identifiable, Hashable {
     let title: String
     let content: ArtistDetailSectionContent
+    /// The shelf's "See all" endpoint, when it has one.
+    var moreEndpoint: ShelfMoreEndpoint?
 
     var id: String {
         switch self.content {

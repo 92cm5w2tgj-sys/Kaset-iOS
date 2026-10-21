@@ -112,38 +112,41 @@ enum ArtistParser { // swiftlint:disable:this type_body_length
                     }
 
                     // Record the shelf's "See all" endpoint against the first
-                    // bucket an item landed in.
-                    if let shelfKind,
-                       let endpoint = self.extractShelfMoreEndpoint(from: carouselRenderer)
-                    {
-                        buckets.moreEndpoints[shelfKind] = endpoint
+                    // bucket an item landed in, and on the shelf itself.
+                    let moreEndpoint = ShelfMoreEndpoint.fromCarousel(carouselRenderer)
+                    if let shelfKind, let moreEndpoint {
+                        buckets.moreEndpoints[shelfKind] = moreEndpoint
                     }
 
                     if !sectionItems.albums.isEmpty {
                         orderedSections.append(ArtistDetailSection(
                             title: shelfTitle ?? "Albums",
-                            content: .albums(sectionItems.albums)
+                            content: .albums(sectionItems.albums),
+                            moreEndpoint: moreEndpoint
                         ))
                     }
 
                     if !sectionItems.singles.isEmpty {
                         orderedSections.append(ArtistDetailSection(
                             title: shelfTitle ?? "Singles & EPs",
-                            content: .albums(sectionItems.singles)
+                            content: .albums(sectionItems.singles),
+                            moreEndpoint: moreEndpoint
                         ))
                     }
 
                     if !sectionItems.playlists.isEmpty {
                         orderedSections.append(ArtistDetailSection(
                             title: shelfTitle ?? "Playlists",
-                            content: .playlists(sectionItems.playlists)
+                            content: .playlists(sectionItems.playlists),
+                            moreEndpoint: moreEndpoint
                         ))
                     }
 
                     if !sectionItems.artists.isEmpty {
                         orderedSections.append(ArtistDetailSection(
                             title: shelfTitle ?? "Artists",
-                            content: .artists(sectionItems.artists)
+                            content: .artists(sectionItems.artists),
+                            moreEndpoint: moreEndpoint
                         ))
                     }
                 }
@@ -207,42 +210,6 @@ enum ArtistParser { // swiftlint:disable:this type_body_length
             return nil
         }
         return ParsingHelpers.extractTitle(from: basicHeader)
-    }
-
-    /// Extracts the shelf's "See all" / "More" browse endpoint, if present.
-    /// Only returns endpoints whose `pageType` we recognize — unknown
-    /// pageTypes are dropped so the UI never surfaces a destination we
-    /// don't know how to render.
-    private static func extractShelfMoreEndpoint(from data: [String: Any]) -> ShelfMoreEndpoint? {
-        guard let header = data["header"] as? [String: Any],
-              let basicHeader = header["musicCarouselShelfBasicHeaderRenderer"] as? [String: Any],
-              let moreButton = basicHeader["moreContentButton"] as? [String: Any],
-              let buttonRenderer = moreButton["buttonRenderer"] as? [String: Any]
-        else {
-            return nil
-        }
-
-        let endpointContainer = (buttonRenderer["command"] as? [String: Any])
-            ?? (buttonRenderer["navigationEndpoint"] as? [String: Any])
-
-        guard let browseEndpoint = endpointContainer?["browseEndpoint"] as? [String: Any],
-              let browseId = browseEndpoint["browseId"] as? String
-        else {
-            return nil
-        }
-
-        let params = browseEndpoint["params"] as? String
-
-        // The pageType lives under browseEndpointContextSupportedConfigs.
-        guard let supportedConfigs = browseEndpoint["browseEndpointContextSupportedConfigs"] as? [String: Any],
-              let musicConfig = supportedConfigs["browseEndpointContextMusicConfig"] as? [String: Any],
-              let pageTypeRaw = musicConfig["pageType"] as? String,
-              let pageType = ShelfMoreEndpoint.PageType(rawValue: pageTypeRaw)
-        else {
-            return nil
-        }
-
-        return ShelfMoreEndpoint(browseId: browseId, params: params, pageType: pageType)
     }
 
     // MARK: - Episodes list (ARTIST pageType with 304-char params)

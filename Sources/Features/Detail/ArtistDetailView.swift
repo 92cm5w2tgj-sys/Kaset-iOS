@@ -95,7 +95,10 @@ struct ArtistDetailView: View {
                             self.shelf("Fans might also like", detail.relatedArtists.map(MediaEntity.init))
                         } else {
                             ForEach(detail.orderedSections) { section in
-                                self.shelf(section.title, Self.entities(of: section))
+                                self.shelf(
+                                    section.title, Self.entities(of: section),
+                                    seeAll: section.moreEndpoint.map { SeeAllDestination(title: section.title, endpoint: $0) }
+                                )
                             }
                         }
                         self.about(detail)
@@ -107,8 +110,8 @@ struct ArtistDetailView: View {
     }
 
     @ViewBuilder
-    private func shelf(_ title: String, _ entities: [MediaEntity]) -> some View {
-        if !entities.isEmpty { ShelfView(title: title, entities: entities) }
+    private func shelf(_ title: String, _ entities: [MediaEntity], seeAll: SeeAllDestination? = nil) -> some View {
+        if !entities.isEmpty { ShelfView(title: title, entities: entities, seeAll: seeAll) }
     }
 
     private func header(_ detail: ArtistDetail, model: ArtistDetailModel) -> some View {

@@ -10,12 +10,15 @@ struct HomeSection: Identifiable, Hashable {
     /// Whether this section is a chart (e.g., "Top 100", "Trending", "Charts").
     /// Chart sections are rendered as vertical numbered lists instead of horizontal carousels.
     let isChart: Bool
+    /// The shelf's "See all" endpoint, when it has one.
+    let moreEndpoint: ShelfMoreEndpoint?
 
-    init(id: String, title: String, items: [HomeSectionItem], isChart: Bool = false) {
+    init(id: String, title: String, items: [HomeSectionItem], isChart: Bool = false, moreEndpoint: ShelfMoreEndpoint? = nil) {
         self.id = id
         self.title = title
         self.items = items
         self.isChart = isChart
+        self.moreEndpoint = moreEndpoint
     }
 }
 
