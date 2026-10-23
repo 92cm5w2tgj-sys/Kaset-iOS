@@ -1,0 +1,52 @@
+# Kaset-iOS unsigned IPA workflow
+# Place this file at: .github/workflows/ipa-unsigned.yml in a fork of emoonadev/Kaset-iOS
+# No signing certificate, provisioning profile, or password is used or needed.
+# The resulting IPA is UNSIGNED - sign it yourself afterwards with your own
+# certificate (for example in LCSign / ESign / Feather on your phone),
+# exactly as with the previous unsigned YouTube Music IPA.
+# Bundle ID stays as in project.yml (dev.emoona.kaset) unless you change it
+# there first; your signing tool may also let you change it at sign time.
+
+name: Build unsigned IPA
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-unsigned-ipa:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate the Xcode project
+        run: xcodegen generate
+
+      - name: Archive without signing
+        run: |
+          xcodebuild archive \
+            -project KasetiOS.xcodeproj \
+            -scheme KasetiOS \
+            -destination 'generic/platform=iOS' \
+            -archivePath $RUNNER_TEMP/Kaset.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Package unsigned IPA
+        run: |
+          mkdir -p $RUNNER_TEMP/Payload
+          cp -R $RUNNER_TEMP/Kaset.xcarchive/Products/Applications/KasetiOS.app $RUNNER_TEMP/Payload/
+          cd $RUNNER_TEMP
+          zip -r Kaset-unsigned.ipa Payload
+          ls -lh Kaset-unsigned.ipa
+          # Sanity check: an unsigned app must NOT contain an embedded profile
+          ls Payload/KasetiOS.app/embedded.mobileprovision 2>/dev/null && echo "WARNING: profile present" || echo "OK: no embedded.mobileprovision (unsigned)"
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kaset-unsigned-IPA
+          path: ${{ runner.temp }}/Kaset-unsigned.ipa
