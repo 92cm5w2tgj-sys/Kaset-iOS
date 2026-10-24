@@ -615,6 +615,13 @@ enum PlaylistParser {
             header.thumbnailURL = ParsingHelpers.extractThumbnailURL(from: detailHeader)
         }
 
+        if header.description == nil,
+           let descData = detailHeader["description"] as? [String: Any],
+           let runs = descData["runs"] as? [[String: Any]]
+        {
+            header.description = ParsingHelpers.joinedRunText(runs)
+        }
+
         if let subtitleData = detailHeader["subtitle"] as? [String: Any],
            let runs = subtitleData["runs"] as? [[String: Any]]
         {
@@ -638,6 +645,13 @@ enum PlaylistParser {
         for sections in sectionGroups {
             for sectionData in sections {
                 if let responsiveHeaderRenderer = sectionData["musicResponsiveHeaderRenderer"] as? [String: Any] {
+                    return responsiveHeaderRenderer
+                }
+                // Playlists the user owns wrap the same header in an editable one.
+                if let editable = sectionData["musicEditablePlaylistDetailHeaderRenderer"] as? [String: Any],
+                   let header = editable["header"] as? [String: Any],
+                   let responsiveHeaderRenderer = header["musicResponsiveHeaderRenderer"] as? [String: Any]
+                {
                     return responsiveHeaderRenderer
                 }
             }

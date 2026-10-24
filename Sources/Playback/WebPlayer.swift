@@ -363,6 +363,9 @@ final class WebPlayer: NSObject {
         if next != self.identity { self.identity = next }
     }
 
+    /// Shows a short message in the banner the shell uses for queue notices.
+    func showNotice(_ text: String) { self.postNotice(text) }
+
     private func postNotice(_ text: String) {
         self.queueNotice = text
         Task { [weak self] in

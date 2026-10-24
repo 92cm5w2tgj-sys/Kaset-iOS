@@ -8,7 +8,7 @@ struct HomeView: View {
         NavigationStack {
             Group {
                 if let model {
-                    BrowsePageView(model: model, emptyMessage: "No recommendations yet.")
+                    BrowsePageView(model: model, emptyMessage: "No recommendations yet.") { MixesShelf() }
                 } else {
                     ProgressView()
                 }

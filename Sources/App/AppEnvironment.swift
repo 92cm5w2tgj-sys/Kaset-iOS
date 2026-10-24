@@ -8,6 +8,7 @@ final class AppEnvironment {
     let auth: AuthStore
     let client: YTMusicClient
     let player: WebPlayer
+    let mixes = ArtistMixLibrary()
     private let accountSwitcher = AccountSwitcher()
 
     /// Photo of the selected account, for the navigation bar button.
