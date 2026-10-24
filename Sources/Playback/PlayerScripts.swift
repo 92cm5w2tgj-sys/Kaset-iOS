@@ -311,14 +311,47 @@ enum PlayerScripts {
           setInterval(skipAdIfNeeded, 500);
           document.addEventListener('playing', skipAdIfNeeded, true);
 
-          // Best effort: "Continue listening?" after a long session.
-          setInterval(() => {
-            const dlg = document.querySelector('ytmusic-you-there-renderer, yt-confirm-dialog-renderer');
+          // "Are you still listening?" (ytmusic-you-there-renderer) after a long session without
+          // touching the page. While it is open YouTube pauses every new track right after it
+          // starts. 1) keep the page's last-activity stamp fresh so it does not come up,
+          // 2) press its button if it does, 3) resume a track it paused.
+          setInterval(() => { try { window._lact = Date.now(); } catch (e) {} }, 30000);
+          const STILL_THERE = 'ytmusic-you-there-renderer, yt-confirm-dialog-renderer';
+          let dialogPausedAt = 0;
+          document.addEventListener('pause', (e) => {
+            const t = e.target;
+            if (!t || !t.tagName || !/^(VIDEO|AUDIO)$/.test(t.tagName) || t.ended) { return; }
+            if (Date.now() - (window.__kasetUserActionAt || 0) < 2000) { return; }
+            const dlg = document.querySelector(STILL_THERE);
+            if (dlg && dlg.offsetParent !== null) { dialogPausedAt = Date.now(); }
+          }, true);
+          let lastDialogReport = '';
+          const dismissStillThere = () => {
+            const dlg = document.querySelector(STILL_THERE);
+            // Only a dialog on screen: templates of closed dialogs stay in the page.
             if (!dlg || dlg.offsetParent === null) { return; }
-            const b = dlg.querySelector('#confirm-button');
-            post({ kind: 'dialog', tag: dlg.tagName.toLowerCase(), clicked: !!b });
+            const b = dlg.querySelector('#confirm-button button, #confirm-button, yt-button-renderer button, '
+              + 'button-view-model button, tp-yt-paper-button, button, [role="button"]');
+            const label = b ? ((b.getAttribute('aria-label') || b.textContent || b.tagName).trim().slice(0, 30)) : '';
+            const report = dlg.tagName + '|' + label;
+            if (report !== lastDialogReport) {
+              lastDialogReport = report;
+              post({ kind: 'dialog', tag: dlg.tagName.toLowerCase(), clicked: !!b, button: label });
+            }
             if (b) { b.click(); }
-          }, 4000);
+            try { window._lact = Date.now(); } catch (e) {}
+            setTimeout(() => {
+              const m = media();
+              if (m && m.paused && !m.ended && Date.now() - dialogPausedAt < 15000) {
+                dialogPausedAt = 0;
+                const p = m.play();
+                if (p && p.catch) { p.catch(() => {}); }
+                post({ kind: 'dialog', tag: 'resumed', clicked: true, button: '' });
+              }
+            }, 600);
+          };
+          setInterval(dismissStillThere, 2000);
+          document.addEventListener('playing', () => setTimeout(dismissStillThere, 300), true);
 
           // Lock screen: own next/previous, neutralise ±10 s seek handlers.
           (function () {
