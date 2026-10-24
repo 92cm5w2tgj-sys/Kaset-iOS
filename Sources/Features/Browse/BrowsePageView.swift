@@ -78,9 +78,11 @@ final class BrowsePageModel {
 }
 
 /// Shelves for a `BrowsePageModel`; songs-only sections render as a list-like grid of cards.
-struct BrowsePageView: View {
+/// `header` scrolls above the sections (Home puts the user's mixes there).
+struct BrowsePageView<Header: View>: View {
     let model: BrowsePageModel
     var emptyMessage = "Nothing here yet."
+    @ViewBuilder var header: Header
 
     var body: some View {
         switch self.model.phase {
@@ -94,6 +96,7 @@ struct BrowsePageView: View {
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 32) {
+                        self.header
                         ForEach(self.model.sections) { section in
                             ShelfView(section: section)
                                 .task { await self.model.loadMoreIfNeeded(after: section) }
@@ -107,6 +110,12 @@ struct BrowsePageView: View {
                 .refreshable { await self.model.load(force: true) }
             }
         }
+    }
+}
+
+extension BrowsePageView where Header == EmptyView {
+    init(model: BrowsePageModel, emptyMessage: String = "Nothing here yet.") {
+        self.init(model: model, emptyMessage: emptyMessage) { EmptyView() }
     }
 }
 

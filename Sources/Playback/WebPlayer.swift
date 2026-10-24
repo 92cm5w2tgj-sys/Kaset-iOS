@@ -191,6 +191,8 @@ final class WebPlayer: NSObject {
     /// Starts a song, optionally inside a playlist/radio so the page owns a real queue.
     func play(videoId: String?, playlistId: String? = nil) {
         guard videoId != nil || playlistId != nil else { return }
+        self.playRequest &+= 1
+        let request = self.playRequest
         var components = URLComponents(string: "https://music.youtube.com/watch")!
         var items: [URLQueryItem] = []
         if let videoId { items.append(URLQueryItem(name: "v", value: videoId)) }
@@ -214,7 +216,8 @@ final class WebPlayer: NSObject {
                     if via != "resolveCommand" { self.logRouterCandidatesOnce() }
                     // An event nobody handles fails silently: load the page if the track did not change.
                     try? await Task.sleep(for: .seconds(3))
-                    guard self.state.videoId != videoId else { return }
+                    // A newer play request owns the page now; checking this one would reload a stale track.
+                    guard request == self.playRequest, self.state.videoId != videoId else { return }
                     self.log.log("cmd", "\(via) did not start \(videoId), loading the watch page")
                     self.webView.load(URLRequest(url: url))
                 }
@@ -226,6 +229,8 @@ final class WebPlayer: NSObject {
     }
 
     @ObservationIgnored private var loggedRouterCandidates = false
+    /// Increments on every `play`; lets the delayed navigation check tell it was superseded.
+    @ObservationIgnored private var playRequest = 0
 
     private func logRouterCandidatesOnce() {
         guard !self.loggedRouterCandidates else { return }
@@ -362,6 +367,9 @@ final class WebPlayer: NSObject {
         )
         if next != self.identity { self.identity = next }
     }
+
+    /// Shows a short message in the banner the shell uses for queue notices.
+    func showNotice(_ text: String) { self.postNotice(text) }
 
     private func postNotice(_ text: String) {
         self.queueNotice = text
@@ -632,7 +640,8 @@ final class WebPlayer: NSObject {
         case "ad":
             self.log.log("ad", "skip via \(message["via"] as? String ?? "?")")
         case "dialog":
-            self.log.log("js", "dialog \(message["tag"] as? String ?? "?") clicked=\(message["clicked"] as? Bool ?? false)")
+            self.log.log("js", "dialog \(message["tag"] as? String ?? "?") clicked=\(message["clicked"] as? Bool ?? false) "
+                + "button=\(message["button"] as? String ?? "")")
         case "playerr":
             self.log.log("js", "play() rejected: \(message["msg"] as? String ?? "?")")
         case "boot":

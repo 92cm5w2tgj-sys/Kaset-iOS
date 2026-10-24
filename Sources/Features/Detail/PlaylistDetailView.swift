@@ -102,6 +102,8 @@ struct PlaylistDetailView: View {
     @State private var renameText = ""
     @State private var isConfirmingDelete = false
     @State private var failureMessage: String?
+    @State private var editingMix: ArtistMix?
+    @State private var isRegenerating = false
     @Environment(\.dismiss) private var dismiss
 
     let id: String
@@ -148,6 +150,11 @@ struct PlaylistDetailView: View {
             }
         } message: {
             Text("This can't be undone.")
+        }
+        .sheet(item: self.$editingMix, onDismiss: {
+            Task { await self.model?.load() }
+        }) { mix in
+            MixEditorView(mix: mix)
         }
         .alert("Playlist", isPresented: Binding(
             get: { self.failureMessage != nil },
@@ -223,6 +230,23 @@ struct PlaylistDetailView: View {
                 }
                 .buttonStyle(SecondaryActionButtonStyle())
             }
+
+            // Artist mix: a new pick of songs from the same artists.
+            if let mix = self.mix(detail) {
+                Button { self.regenerate(mix, model: model) } label: {
+                    if self.isRegenerating {
+                        ProgressView()
+                    } else {
+                        Label("Regenerate", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                }
+                .buttonStyle(SecondaryActionButtonStyle())
+                .disabled(self.isRegenerating)
+                Text("Mix of \(mix.artistSummary)")
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
         }
         .frame(maxWidth: .infinity)
     }
@@ -267,6 +291,10 @@ struct PlaylistDetailView: View {
                     if let url = URL(string: "https://music.youtube.com/playlist?list=\(self.model?.watchListId ?? MediaEntity.watchPlaylistId(detail.id))") {
                         ShareLink(item: url) { Label("Share", systemImage: "square.and.arrow.up") }
                     }
+                    if let mix = self.mix(detail) {
+                        Divider()
+                        Button("Edit Mix…", systemImage: "slider.horizontal.3") { self.editingMix = mix }
+                    }
                     if detail.canDelete {
                         Divider()
                         Button("Rename…", systemImage: "pencil") {
@@ -282,6 +310,30 @@ struct PlaylistDetailView: View {
                 }
                 .neutralMenuTint()
                 .accessibilityLabel("More")
+            }
+        }
+    }
+
+    /// The artist mix behind this playlist: the one created here, else one described in the
+    /// playlist description (made on another device).
+    private func mix(_ detail: PlaylistDetail) -> ArtistMix? {
+        if let known = self.environment.mixes.mix(forPlaylistId: detail.id) { return known }
+        guard detail.canDelete else { return nil }
+        return ArtistMixMarker.mix(
+            from: detail.description, playlistId: MediaEntity.watchPlaylistId(detail.id),
+            title: self.model?.renamedTitle ?? detail.title, thumbnailURL: detail.thumbnailURL
+        )
+    }
+
+    private func regenerate(_ mix: ArtistMix, model: PlaylistDetailModel) {
+        self.isRegenerating = true
+        Task {
+            defer { self.isRegenerating = false }
+            do {
+                try await self.environment.mixes.regenerate(mix, environment: self.environment)
+                await model.load()
+            } catch {
+                self.failureMessage = error.localizedDescription
             }
         }
     }

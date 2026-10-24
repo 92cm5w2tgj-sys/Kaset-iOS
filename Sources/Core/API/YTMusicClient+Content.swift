@@ -276,6 +276,32 @@ extension YTMusicClient {
         self.cache.invalidateMutationCaches()
     }
 
+    /// Sets the description of a playlist the user owns.
+    func setPlaylistDescription(id: String, description: String) async throws {
+        try await self.editPlaylist(id: id, actions: [
+            ["action": "ACTION_SET_PLAYLIST_DESCRIPTION", "playlistDescription": description],
+        ])
+    }
+
+    /// Replaces every song of a playlist the user owns: removes the current occurrences, then
+    /// adds `videoIds` in order.
+    func replacePlaylistSongs(id: String, with videoIds: [String]) async throws {
+        let current = try await self.getPlaylist(id: id).detail.tracks
+        let removals: [[String: Any]] = current.compactMap { song in
+            song.playlistSetVideoId.map { ["action": "ACTION_REMOVE_VIDEO", "removedVideoId": song.videoId, "setVideoId": $0] }
+        }
+        if !removals.isEmpty { try await self.editPlaylist(id: id, actions: removals) }
+        try await self.addSongsToPlaylist(videoIds: videoIds, playlistId: id)
+    }
+
+    private func editPlaylist(id: String, actions: [[String: Any]]) async throws {
+        let clean = id.hasPrefix("VL") ? String(id.dropFirst(2)) : id
+        _ = try await self.request(
+            "browse/edit_playlist", body: ["playlistId": clean, "actions": actions], authPolicy: .required
+        )
+        self.cache.invalidateMutationCaches()
+    }
+
     /// Permanently deletes a playlist the user owns (kaset `deletePlaylist`).
     func deletePlaylist(id: String) async throws {
         let clean = id.hasPrefix("VL") ? String(id.dropFirst(2)) : id

@@ -32,9 +32,11 @@ Legend: `[x]` shipped · `[ ]` planned.
       an underrun or in Low Data Mode, buffer-ahead readout in the log and health screen
 - [x] Play without a page load when YouTube Music's router is gone (`yt-navigate` fallback)
 - [x] Play after a media error (device locked while paused) reloads the track at its position
-
-## Robustness (do first)
-
+- [x] Artist mixes (*Home → My Mixes*): pick artists, the app creates a private YouTube Music
+      playlist of their songs, shuffled and interleaved; settings live in the playlist
+      description so mixes sync across devices; *Regenerate* swaps in a new pick. Options:
+      25 / 50 songs, similar artists, skip recently played, discoveries (30 % lesser-known
+      songs). Base for *Playlist from a sentence*
 - [ ] **Verify on device** (code shipped, not yet measured):
   - Longer buffer (*Settings → Bad network*, relaunch): do the `[buffer] … ahead=` log lines
     go well past ~25-35 s? If not, YouTube's `enable_server_driven_readahead` probably caps it
@@ -90,8 +92,8 @@ Intelligence on; the features hide themselves otherwise. Hebrew support of the m
 checked first (spike on device).
 
 - [ ] **Playlist from a sentence** (Foundation Models): "calm music for night driving, Hebrew
-      and French" → the model turns it into YouTube Music searches and picks from liked songs
-      (tool calling), then plays it as a queue or saves it as a playlist
+      and French" → the model picks artists (from the ones I play) and YouTube Music searches
+      (tool calling), then the artist-mix engine builds the queue, or saves it as a playlist
 - [ ] **Playlist name and description** suggested from the tracks it contains
 - [ ] **Generated playlist covers** (Image Playground) from the playlist name or mood
 

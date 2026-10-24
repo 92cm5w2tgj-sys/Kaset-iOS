@@ -40,6 +40,20 @@
     "%@ failing" : {
 
     },
+    "%@ songs" : {
+
+    },
+    "%lld songs" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "%lld titres"
+          }
+        }
+      }
+    },
     "About" : {
       "localizations" : {
         "fr" : {
@@ -57,6 +71,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Compte"
+          }
+        }
+      }
+    },
+    "Add artists from the suggestions or search for them." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoute des artistes depuis les suggestions ou recherche-les."
           }
         }
       }
@@ -105,6 +129,17 @@
         }
       }
     },
+    "Adds the artist to the mix" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Ajoute l'artiste au mix"
+          }
+        }
+      }
+    },
     "Advertisement" : {
       "localizations" : {
         "fr" : {
@@ -137,6 +172,17 @@
         }
       }
     },
+    "Another set of artists" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Une autre sélection d'artistes"
+          }
+        }
+      }
+    },
     "Artists" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -144,6 +190,20 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Artistes"
+          }
+        }
+      }
+    },
+    "Artists (%@)" : {
+
+    },
+    "Artists (%lld)" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Artistes (%lld)"
           }
         }
       }
@@ -267,6 +327,17 @@
         }
       }
     },
+    "Couldn't find songs for this mix" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Aucun titre trouvé pour ce mix"
+          }
+        }
+      }
+    },
     "Couldn't load" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -300,6 +371,50 @@
         }
       }
     },
+    "Create and Play" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Créer et lire"
+          }
+        }
+      }
+    },
+    "Creates a playlist from artists you pick" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Crée une playlist à partir des artistes choisis"
+          }
+        }
+      }
+    },
+    "Creating…" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Création…"
+          }
+        }
+      }
+    },
+    "Delete Mix" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer le mix"
+          }
+        }
+      }
+    },
     "Delete Playlist" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -307,6 +422,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Supprimer la playlist"
+          }
+        }
+      }
+    },
+    "Delete this mix?" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Supprimer ce mix ?"
           }
         }
       }
@@ -354,6 +480,16 @@
         }
       }
     },
+    "Discoveries make about 30% of the mix lesser-known songs by these artists. The mix is a private playlist in your YouTube Music account; regenerate it any time for a new pick." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Avec les découvertes, environ 30 % du mix sont des titres moins connus de ces artistes. Le mix est une playlist privée dans ton compte YouTube Music ; régénère-le quand tu veux pour une nouvelle sélection."
+          }
+        }
+      }
+    },
     "Done" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -361,6 +497,28 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "OK"
+          }
+        }
+      }
+    },
+    "Edit Mix" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifier le mix"
+          }
+        }
+      }
+    },
+    "Edit Mix…" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Modifier le mix…"
           }
         }
       }
@@ -405,6 +563,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Suivi"
+          }
+        }
+      }
+    },
+    "From the artists you follow and your recent history." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "D'après les artistes que tu suis et ton historique récent."
           }
         }
       }
@@ -463,6 +631,28 @@
         }
       }
     },
+    "Include discoveries" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inclure des découvertes"
+          }
+        }
+      }
+    },
+    "Include similar artists" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Inclure des artistes similaires"
+          }
+        }
+      }
+    },
     "Kind" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -470,6 +660,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Type"
+          }
+        }
+      }
+    },
+    "Length" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Longueur"
           }
         }
       }
@@ -586,6 +787,16 @@
         }
       }
     },
+    "Mix of %@" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mix de %@"
+          }
+        }
+      }
+    },
     "Moods" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -608,6 +819,38 @@
         }
       }
     },
+    "My mix" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mon mix"
+          }
+        }
+      }
+    },
+    "My Mixes" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Mes mix"
+          }
+        }
+      }
+    },
+    "Name" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nom"
+          }
+        }
+      }
+    },
     "Native Now Playing card" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -626,6 +869,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Nouveautés"
+          }
+        }
+      }
+    },
+    "New Mix" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nouveau mix"
           }
         }
       }
@@ -762,6 +1015,16 @@
         }
       }
     },
+    "Options" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Options"
+          }
+        }
+      }
+    },
     "Pause" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -769,6 +1032,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Pause"
+          }
+        }
+      }
+    },
+    "Pick your artists" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choisis tes artistes"
           }
         }
       }
@@ -933,6 +1207,17 @@
         }
       }
     },
+    "Regenerate" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Régénérer"
+          }
+        }
+      }
+    },
     "Remove" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -951,6 +1236,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Retirer de la bibliothèque"
+          }
+        }
+      }
+    },
+    "Removes the artist from the mix" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Retire l'artiste du mix"
           }
         }
       }
@@ -1002,6 +1298,17 @@
         }
       }
     },
+    "Save and Play" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Enregistrer et lire"
+          }
+        }
+      }
+    },
     "Search" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1009,6 +1316,17 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Recherche"
+          }
+        }
+      }
+    },
+    "Search artists" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Rechercher des artistes"
           }
         }
       }
@@ -1165,6 +1483,17 @@
         }
       }
     },
+    "Skip recently played" : {
+      "extractionState" : "stale",
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Éviter les titres écoutés récemment"
+          }
+        }
+      }
+    },
     "Skipping ads is an opt-in and may go against YouTube's terms of service." : {
       "localizations" : {
         "fr" : {
@@ -1239,6 +1568,16 @@
         }
       }
     },
+    "Suggestions" : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Suggestions"
+          }
+        }
+      }
+    },
     "System" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -1246,6 +1585,16 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Système"
+          }
+        }
+      }
+    },
+    "The playlist is deleted from your YouTube Music account." : {
+      "localizations" : {
+        "fr" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "La playlist est supprimée de ton compte YouTube Music."
           }
         }
       }
